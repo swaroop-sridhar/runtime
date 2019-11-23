@@ -1130,8 +1130,10 @@ namespace ETW
 
 #ifdef FEATURE_EVENT_TRACE
         static VOID RuntimeInformation(INT32 type);
+        static VOID RuntimeProperties();
 #else
         static VOID RuntimeInformation(INT32 type) {};
+        static VOID RuntimeProperties() {};
 #endif // FEATURE_EVENT_TRACE
     };
 

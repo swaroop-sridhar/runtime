@@ -5035,6 +5035,26 @@ VOID ETW::InfoLog::RuntimeInformation(INT32 type)
     } EX_CATCH { } EX_END_CATCH(SwallowAllExceptions);
 }
 
+/****************************************************************************/
+/* This is called by the runtime during startup to log the
+   properties passed on from the host. */
+/****************************************************************************/
+VOID ETW::InfoLog::RuntimeProperties()
+{
+    CONTRACTL{
+        NOTHROW;
+        GC_TRIGGERS;
+    } CONTRACTL_END;
+
+    EX_TRY{
+        if (ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_DOTNET_Context, RuntimeProperties))
+        {
+                FireEtwRuntimeProperties(GetClrInstanceId(),
+                                         );
+        }
+    } EX_CATCH{ } EX_END_CATCH(SwallowAllExceptions);
+}
+
 /* Fires ETW events every time a pdb is dynamically loaded.
 *
 * The ETW events correspond to sending parts of the pdb in roughly
