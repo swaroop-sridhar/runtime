@@ -5039,7 +5039,82 @@ VOID ETW::InfoLog::RuntimeInformation(INT32 type)
 /* This is called by the runtime during startup to log the
    properties passed on from the host. */
 /****************************************************************************/
-VOID ETW::InfoLog::RuntimeProperties()
+
+bool GetNextPath(SString& paths, SString::Iterator& startPos, SString& outPath)
+{
+    bool wrappedWithQuotes = false;
+
+    // Skip any leading spaces or path separators
+    while (paths.Skip(startPos, W(' ')) || paths.Skip(startPos, PATH_SEPARATOR_CHAR_W)) {}
+
+    if (startPos == paths.End())
+    {
+        // No more paths in the string and we just skipped over some white space
+        outPath.Set(W(""));
+        return false;
+    }
+
+    // Support paths being wrapped with quotations
+    if (paths.Skip(startPos, W('\"')))
+    {
+        wrappedWithQuotes = true;
+    }
+
+    SString::Iterator iEnd = startPos;      // Where current path ends
+    SString::Iterator iNext;                // Where next path starts
+    if (wrappedWithQuotes)
+    {
+        if (paths.Find(iEnd, W('\"')))
+        {
+            iNext = iEnd;
+            // Find where the next path starts - there should be a path separator right after the closing quotation mark
+            if (paths.Find(iNext, PATH_SEPARATOR_CHAR_W))
+            {
+                iNext++;
+            }
+            else
+            {
+                iNext = paths.End();
+            }
+        }
+        else
+        {
+            // There was no terminating quotation mark - that's bad
+            return false;
+        }
+    }
+    else if (paths.Find(iEnd, PATH_SEPARATOR_CHAR_W))
+    {
+        iNext = iEnd + 1;
+    }
+    else
+    {
+        iNext = iEnd = paths.End();
+    }
+
+    // Skip any trailing spaces
+    while (iEnd[-1] == W(' '))
+    {
+        iEnd--;
+    }
+
+    outPath.Set(paths, startPos, iEnd);
+    startPos = iNext;
+
+    return true;
+}
+
+static void PathStringToPathList(SString paths, StringArrayList list)
+{
+    SString::Iterator i = paths.Begin();
+    SString path;
+    while (GetNextPath(paths, i, path))
+    {
+        list.Append(path);
+    }
+}
+
+VOID ETW::InfoLog::RuntimeProperties(int nProperties, LPCWSTR* propertyNames, LPCWSTR* propertyValues)
 {
     CONTRACTL{
         NOTHROW;
@@ -5049,8 +5124,58 @@ VOID ETW::InfoLog::RuntimeProperties()
     EX_TRY{
         if (ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_DOTNET_Context, RuntimeProperties))
         {
-                FireEtwRuntimeProperties(GetClrInstanceId(),
-                                         );
+            StringArrayList tpa;
+            tpa.GetCount();
+
+            for (int i = 0; i < nProperties; i++)
+            {
+                if (wcscmp(propertyNames[i], W("TRUSTED_PLATFORM_ASSEMBLIES")) == 0)
+                {
+                    propertyValues[i];
+                }
+                else if (wcscmp(propertyNames[i], W("NATIVE_DLL_SEARCH_DIRECTORIES")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("PLATFORM_RESOURCE_ROOTS")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("APP_CONTEXT_DEPS_FILES")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("PROBING_DIRECTORIES")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("APP_PATHS")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("APP_NI_PATHS")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("APP_CONTEXT_BASE_DIRECTORY")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("STARTUP_HOOKS")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("FX_DEPS_FILE")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("FX_PRODUCT_VERSION")) == 0)
+                {
+                }
+                else if (wcscmp(propertyNames[i], W("JIT_PATH")) == 0)
+                {
+                }
+                else
+                {
+                }
+            }
+
+
+
+
+
+                FireEtwRuntimeProperties(GetClrInstanceId());
         }
     } EX_CATCH{ } EX_END_CATCH(SwallowAllExceptions);
 }

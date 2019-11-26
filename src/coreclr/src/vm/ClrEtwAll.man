@@ -720,11 +720,12 @@
                         <data name="AppPathsCount" inType="win:UInt32" />
                         <data name="AppNIPathsCount" inType="win:UInt32" />
                         <data name="FxResolutionCount" inType="win:UInt32" />
+                        <data name="StartUpHooksCount" inType="win:UInt32"/>
+                        <data name="OtherPropertiesCount" inType="win:UInt32"/>
                         <data name="AppContextBaseDirectory" inType="win:UnicodeString"/>
                         <data name="FxDepsFile" inType="win:UnicodeString"/>
                         <data name="FxProductVersion" inType="win:UnicodeString"/>
                         <data name="JitPath" inType="win:UnicodeString"/>
-                        <data name="StartUpHooks" inType="win:UnicodeString"/>
                         <data name="TrustedPlatformAssemblies" inType="win:UnicodeString" count="TrustedPlatformAssembliesCount"/>
                         <data name="NativeDllSearchDirectories" inType="win:UnicodeString" count="NativeDllSearchDirectoriesCount"/>
                         <data name="PlatformResourceRoots" inType="win:UnicodeString" count="PlatformResourceRootsCount"/>
@@ -732,10 +733,15 @@
                         <data name="ProbingDirectories" inType="win:UnicodeString" count="ProbingDirectoriesCount"/>
                         <data name="AppPaths" inType="win:UnicodeString" count="AppPathsCount"/>
                         <data name="AppNIPaths" inType="win:UnicodeString" count="AppNIPathsCount"/>
+                        <data name="StartUpHooks" inType="win:UnicodeString" count="StartUpHooksCount"/>
                         <struct name="FxResolutionValues" count="FxResolutionCount" >
                             <data name="Frameword" inType="win:UnicodeString" />
                             <data name="Requested" inType="win:UnicodeString" />
                             <data name="Resolved" inType="win:UnicodeString" />
+                        </struct>
+                        <struct name="OtherProperties" count="OtherPropertiesCount" >
+                            <data name="Name" inType="win:UnicodeString" />
+                            <data name="Value" inType="win:UnicodeString" />
                         </struct>
                         <UserData>
                             <Type xmlns="myNs">
@@ -748,11 +754,12 @@
                                 <AppPathsCount> %7 </AppPathsCount>
                                 <AppNIPathsCount> %8 </AppNIPathsCount>
                                 <FxResolutionCount> %9 </FxResolutionCount>
-                                <AppContextBaseDirectory> %10 </AppContextBaseDirectory>
-                                <FxDepsFile> %11 </FxDepsFile>
-                                <FxProductVersion> %12 </FxProductVersion>
-                                <JitPath> %13 </JitPath>
-                                <StartUpHooks> %14 </StartUpHooks>
+                                <StartUpHooksCount> %10 </StartUpHooksCount>
+                                <OtherPropertiesCount> %11 </OtherPropertiesCount>
+                                <AppContextBaseDirectory> %12 </AppContextBaseDirectory>
+                                <FxDepsFile> %13 </FxDepsFile>
+                                <FxProductVersion> %14 </FxProductVersion>
+                                <JitPath> %15 </JitPath>
                             </Type>
                         </UserData>
                     </template>
@@ -3627,6 +3634,7 @@
 
                 </events>
             </provider>
+
 
             <!--CLR Rundown Publisher-->
             <provider name="Microsoft-Windows-DotNETRuntimeRundown"
@@ -6842,7 +6850,7 @@
                 <string id="RuntimePublisher.AuthenticodeVerificationEnd_V1EventMessage" value="VerificationFlags=%1;%nErrorCode=%2;%nModulePath=%3;%nClrInstanceID=%4"/>
                 <string id="RuntimePublisher.EEStartupStartEventMessage" value="VerificationFlags=%1;%nErrorCode=%2;%nModulePath=%3;%nClrInstanceID=%4"/>
                 <string id="RuntimePublisher.RuntimeInformationEventMessage" value="ClrInstanceID=%1;%nSKU=%2;%nBclMajorVersion=%3;%nBclMinorVersion=%4;%nBclBuildNumber=%5;%nBclQfeNumber=%6;%nVMMajorVersion=%7;%nVMMinorVersion=%8;%nVMBuildNumber=%9;%nVMQfeNumber=%10;%nStartupFlags=%11;%nStartupMode=%12;%nCommandLine=%13;%nComObjectGUID=%14;%nRuntimeDllPath=%15"/>
-                <string id="RuntimePublisher.RuntimePropertiesEventMessage" value="ClrInstanceID=%1;%nTrustedPlatformAssembliesCount=%2;%nNativeDllSearchDirectoriesCount=%3;%nPlatformResourceRootsCount=%4;%nAppContextDepsFilesCount=%5;%nProbingDirectoriesCount=%6;%nAppPathsCount=%7;%nAppNIPathsCount=%8;%nFxResolutionCount=%9;%nAppContextBaseDirectory=%10;%nFxDepsFile=%11;%nFxProductVersion=%12;%nJitPath=%13;%nStartUpHooks=%14" />
+                <string id="RuntimePublisher.RuntimePropertiesEventMessage" value="ClrInstanceID=%1;%nTrustedPlatformAssembliesCount=%2;%nNativeDllSearchDirectoriesCount=%3;%nPlatformResourceRootsCount=%4;%nAppContextDepsFilesCount=%5;%nProbingDirectoriesCount=%6;%nAppPathsCount=%7;%nAppNIPathsCount=%8;%nFxResolutionCount=%9;%nStartupHooksCount=%10;%nOtherPropertiesCount=%11;%nAppContextBaseDirectory=%12;%nFxDepsFile=%13;%nFxProductVersion=%14;%nJitPath=%15" />
                 <string id="RuntimePublisher.MethodJitInliningFailedEventMessage" value="MethodBeingCompiledNamespace=%1;%nMethodBeingCompiledName=%2;%nMethodBeingCompiledNameSignature=%3;%nInlinerNamespace=%4;%nInlinerName=%5;%nInlinerNameSignature=%6;%nInlineeNamespace=%7;%nInlineeName=%8;%nInlineeNameSignature=%9;%nFailAlways=%10;%nFailReason=%11;%nClrInstanceID=%12" />
                 <string id="RuntimePublisher.MethodJitInliningSucceededEventMessage" value="MethodBeingCompiledNamespace=%1;%nMethodBeingCompiledName=%2;%nMethodBeingCompiledNameSignature=%3;%nInlinerNamespace=%4;%nInlinerName=%5;%nInlinerNameSignature=%6;%nInlineeNamespace=%7;%nInlineeName=%8;%nInlineeNameSignature=%9;%nClrInstanceID=%10" />
                 <string id="RuntimePublisher.MethodJitTailCallFailedEventMessage" value="MethodBeingCompiledNamespace=%1;%nMethodBeingCompiledName=%2;%nMethodBeingCompiledNameSignature=%3;%nCallerNamespace=%4;%nCallerName=%5;%nCallerNameSignature=%6;%nCalleeNamespace=%7;%nCalleeName=%8;%nCalleeNameSignature=%9;%nTailPrefix=%10;%nFailReason=%11;%nClrInstanceID=%12" />
