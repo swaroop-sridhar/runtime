@@ -46,7 +46,7 @@ StatusCode runner_t::extract()
         reader.set_offset(marker_t::header_offset());
         header_t header = header_t::read(reader);
 
-        extractor_t extractor(header.bundle_id(), m_bundle_path);
+        extractor_t extractor(header.bundle_id(), m_bundle_path, m_app_name);
         m_extraction_dir = extractor.extraction_dir();
 
         // Determine if embedded files are already extracted, and available for reuse

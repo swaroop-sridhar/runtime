@@ -13,11 +13,15 @@ namespace bundle
     class extractor_t
     {
     public:
-        extractor_t(const pal::string_t &bundle_id, const pal::string_t& bundle_path)
-            :m_extraction_dir(), m_working_extraction_dir()
+        extractor_t(const pal::string_t &bundle_id,
+                    const pal::string_t& bundle_path,
+                    const pal::string_t& app_name)
+            :m_extraction_dir(),
+            m_working_extraction_dir(),
+            m_bundle_id(bundle_id),
+            m_bundle_path(bundle_path),
+            m_app_name(app_name)
         {
-            m_bundle_id = bundle_id;
-            m_bundle_path = bundle_path;
         }
 
         pal::string_t& extraction_dir();
@@ -37,6 +41,7 @@ namespace bundle
 
         pal::string_t m_bundle_id;
         pal::string_t m_bundle_path;
+        pal::string_t m_app_name;
         pal::string_t m_extraction_dir;
         pal::string_t m_working_extraction_dir;
     };

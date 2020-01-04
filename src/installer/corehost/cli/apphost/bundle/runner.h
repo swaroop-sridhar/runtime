@@ -12,8 +12,10 @@ namespace bundle
     class runner_t
     {
     public:
-        runner_t(const pal::string_t& bundle_path)
+        runner_t(const pal::string_t& bundle_path,
+                 const pal::string_t& app_name)
             : m_bundle_path(bundle_path)
+            , m_app_name(app_name)
             , m_bundle_map(nullptr)
             , m_bundle_length(0)
         {
@@ -31,7 +33,9 @@ namespace bundle
         void unmap_host();
 
         pal::string_t m_bundle_path;
+        pal::string_t m_app_name;
         pal::string_t m_extraction_dir;
+        pal::string_t m_app_name;
         int8_t* m_bundle_map;
         size_t m_bundle_length;
     };

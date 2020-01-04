@@ -114,7 +114,21 @@ bool extractor_t::can_reuse_extraction()
     // committed (renamed) to m_extraction_dir. Therefore, the presence of 
     // m_extraction_dir means that the files are pre-extracted. 
 
-    return pal::directory_exists(extraction_dir());
+    if (pal::directory_exists(extraction_dir()))
+    {
+        pal::string_t app_path = m_extraction_dir + DIR_SEPARATOR + m_app_name;
+
+        if (pal::file_exists(app_path))
+        {
+            return true;
+        }
+        else
+        {
+            dir_utils_t::remove_directory_tree(m_working_extraction_dir, /* throw_on_error = */ true);
+        }
+    }
+
+    return false;
 }
 
 void extractor_t::begin()

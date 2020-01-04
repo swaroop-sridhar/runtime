@@ -44,7 +44,21 @@ void dir_utils_t::create_directory_tree(const pal::string_t &path)
     }
 }
 
-void dir_utils_t::remove_directory_tree(const pal::string_t& path)
+void remove_failure_warn_or_throw(const pal::string_t& path, bool should_throw)
+{
+    if (should_throw)
+    {
+        trace::error(_X("Failure processing application bundle."));
+        trace::error(_X("Failed to remove temporary file/directory [%s]."), path.c_str());
+        throw StatusCode::BundleExtractionIOError;
+    }
+    else
+    {
+        trace::warning(_X("Failed to remove temporary file/directory [%s]."), path.c_str());
+    }
+}
+
+void dir_utils_t::remove_directory_tree(const pal::string_t& path, bool throw_on_error = false)
 {
     if (path.empty())
     {
@@ -66,13 +80,13 @@ void dir_utils_t::remove_directory_tree(const pal::string_t& path)
     {
         if (!pal::remove(file.c_str()))
         {
-            trace::warning(_X("Failed to remove temporary file [%s]."), file.c_str());
+            remove_failure_warn_or_throw(file.c_str(), throw_on_error);
         }
     }
 
     if (!pal::rmdir(path.c_str()))
     {
-        trace::warning(_X("Failed to remove temporary directory [%s]."), path.c_str());
+        remove_failure_warn_or_throw(path.c_str(), throw_on_error);
     }
 }
 

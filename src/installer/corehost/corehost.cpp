@@ -120,7 +120,7 @@ int exe_start(const int argc, const pal::char_t* argv[])
 
     if (bundle::marker_t::is_bundle())
     {
-        bundle::runner_t bundle_runner(host_path);
+        bundle::runner_t bundle_runner(host_path, embedded_app_name);
         StatusCode bundle_status = bundle_runner.extract();
 
         if (bundle_status != StatusCode::Success)
