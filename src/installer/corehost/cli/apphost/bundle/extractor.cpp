@@ -52,6 +52,18 @@ void extractor_t::determine_working_extraction_dir()
     trace::info(_X("Temporary directory used to extract bundled files is [%s]."), m_working_extraction_dir.c_str());
 }
 
+pal::string_t extractor_t::determine_deletion_dir()
+{
+    pal::string_t deletion_dir = get_directory(extraction_dir());
+    pal::char_t pid[32];
+    pal::snwprintf(pid, 32, _X("%x"), pal::get_pid());
+    append_path(&m_working_extraction_dir, pid);
+
+
+    trace::info(_X("Temporary directory used to extract bundled files is [%s]."), m_working_extraction_dir.c_str());
+}
+
+
 // Create a file to be extracted out on disk, including any intermediate sub-directories.
 FILE* extractor_t::create_extraction_file(const pal::string_t& relative_path)
 {
@@ -104,7 +116,7 @@ pal::string_t& extractor_t::extraction_dir()
     return m_extraction_dir;
 }
 
-bool extractor_t::can_reuse_extraction()
+bool extractor_t::validate_extraction()
 {
     // In this version, the extracted files are assumed to be 
     // correct by construction.
@@ -114,17 +126,30 @@ bool extractor_t::can_reuse_extraction()
     // committed (renamed) to m_extraction_dir. Therefore, the presence of 
     // m_extraction_dir means that the files are pre-extracted. 
 
+    if (!pal::directory_exists(extraction_dir()))
+    {
+        return false;
+    }
+
+    pal::string_t app_path = m_extraction_dir + DIR_SEPARATOR + m_app_name;
+    return pal::file_exists(app_path);
+}
+
+bool extractor_t::can_reuse_extraction()
+{
+    if (validate_extraction())
+    {
+        return true;
+    }
+
     if (pal::directory_exists(extraction_dir()))
     {
-        pal::string_t app_path = m_extraction_dir + DIR_SEPARATOR + m_app_name;
-
-        if (pal::file_exists(app_path))
+        
+        if (!dir_utils_t::rename_with_retries(m_extraction_dir, m_working_extraction_dir, nullptr))
         {
-            return true;
-        }
-        else
-        {
-            dir_utils_t::remove_directory_tree(m_working_extraction_dir, /* throw_on_error = */ true);
+            trace::error(_X("Failure processing application bundle."));
+            trace::error(_X("Failed to commit extracted files to directory [%s]."), m_extraction_dir.c_str());
+            throw StatusCode::BundleExtractionFailure;
         }
     }
 
@@ -158,6 +183,7 @@ void extractor_t::commit()
     // caused by AV software. Basically the extraction process above writes a bunch of executable files to disk
     // and some AV software may decide to scan them on write. If this happens the files will be locked which blocks
     // our ablity to move them.
+
     int retry_count = 500;
     while (true)
     {

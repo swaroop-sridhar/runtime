@@ -32,8 +32,10 @@ namespace bundle
     private:
         void determine_extraction_dir();
         void determine_working_extraction_dir();
+        void determine_deletion_dir();
 
         FILE* create_extraction_file(const pal::string_t& relative_path);
+        bool validate_extraction();
 
         void begin();
         void extract(const file_entry_t& entry, reader_t& reader);

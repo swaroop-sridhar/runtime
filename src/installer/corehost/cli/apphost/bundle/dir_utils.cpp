@@ -44,21 +44,7 @@ void dir_utils_t::create_directory_tree(const pal::string_t &path)
     }
 }
 
-void remove_failure_warn_or_throw(const pal::string_t& path, bool should_throw)
-{
-    if (should_throw)
-    {
-        trace::error(_X("Failure processing application bundle."));
-        trace::error(_X("Failed to remove temporary file/directory [%s]."), path.c_str());
-        throw StatusCode::BundleExtractionIOError;
-    }
-    else
-    {
-        trace::warning(_X("Failed to remove temporary file/directory [%s]."), path.c_str());
-    }
-}
-
-void dir_utils_t::remove_directory_tree(const pal::string_t& path, bool throw_on_error = false)
+void dir_utils_t::remove_directory_tree(const pal::string_t& path)
 {
     if (path.empty())
     {
@@ -80,13 +66,13 @@ void dir_utils_t::remove_directory_tree(const pal::string_t& path, bool throw_on
     {
         if (!pal::remove(file.c_str()))
         {
-            remove_failure_warn_or_throw(file.c_str(), throw_on_error);
+            trace::warning(_X("Failed to remove temporary file [%s]."), file.c_str());
         }
     }
 
     if (!pal::rmdir(path.c_str()))
     {
-        remove_failure_warn_or_throw(path.c_str(), throw_on_error);
+        trace::warning(_X("Failed to remove temporary directory [%s]."), path.c_str());
     }
 }
 
@@ -105,3 +91,36 @@ void dir_utils_t::fixup_path_separator(pal::string_t& path)
         }
     }
 }
+
+// Retry the rename operation with some wait in between the attempts.
+// This is an attempt to workaround for possible file locking caused by AV software.
+bool dir_utils_t::rename_with_retries(pal::string_t& old_name, pal::string_t& new_name, bool (*intermediate_check)())
+{
+    for(int retry_count; retry_count < 500; retry_count++)
+    {
+        if (pal::rename(old_name.c_str(), new_name.c_str()) == 0)
+        {
+            return true;
+        }
+        bool should_retry = errno == EACCES;
+
+        if (intermediate_check != nullptr && intermediate_check())
+        {
+            return true;
+        }
+
+        if (should_retry)
+        {
+            trace::info(_X("Retrying Rename [%s] to [%s] due to EACCES error"), old_name.c_str(), new_name.c_str());
+            pal::sleep(100);
+            continue;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+
