@@ -37,8 +37,8 @@ namespace bundle
         void extract(const file_entry_t& entry, reader_t& reader);
 
         void begin();
-        void commit_file(const pal::string_t& relative_path);
-        void commit_dir();
+        bool commit_file(const pal::string_t& relative_path);
+        void commit_full_extraction();
         void clean();
 
         pal::string_t m_bundle_id;

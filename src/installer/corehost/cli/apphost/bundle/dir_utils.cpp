@@ -98,45 +98,27 @@ void dir_utils_t::fixup_path_separator(pal::string_t& path)
     }
 }
 
-// Retry the rename operation with some wait in between the attempts.
-// This is an attempt to workaround for possible file locking caused by AV software.
-
-bool dir_utils_t::rename_with_retries(pal::string_t& old_name, pal::string_t& new_name, bool& dir_exists)
+rename_result dir_utils_t::rename(pal::string_t& old_name, pal::string_t& new_name)
 {
-    for (int retry_count=0; retry_count < 500; retry_count++)
+    if (pal::rename(old_name.c_str(), new_name.c_str()) == 0)
     {
-        if (pal::rename(old_name.c_str(), new_name.c_str()) == 0)
-        {
-            return true;
-        }
-        bool should_retry = errno == EACCES;
+        return rename_result::ok;
+    }
+    bool should_retry = (errno == EACCES) || (errno == EBUSY);
 
-        if (pal::directory_exists(new_name))
-        {
-            // Check directory_exists() on each run, because a concurrent process may have
-            // created the new_name directory.
-            //
-            // The rename() operation above fails with errono == EACCESS if 
-            // * Directory new_name already exists, or
-            // * Paths are invalid paths, or
-            // * Due to locking/permission problems.
-            // Therefore, we need to perform the directory_exists() check again.
+    if (pal::file_exists(new_name))
+    {
+        // Check directory_exists() on each run, because a concurrent process may have
+        // created the new_name directory.
+        //
+        // The rename() operation above fails with errono == EACCESS if 
+        // * Directory new_name already exists, or
+        // * Paths are invalid paths, or
+        // * Due to locking/permission problems.
+        // Therefore, we need to perform the directory_exists() check again.
 
-            dir_exists = true;
-            return false;
-        }
-
-        if (should_retry)
-        {
-            trace::info(_X("Retrying Rename [%s] to [%s] due to EACCES error"), old_name.c_str(), new_name.c_str());
-            pal::sleep(100);
-            continue;
-        }
-        else
-        {
-            return false;
-        }
+        return rename_result::exists;
     }
 
-    return false;
+    return (should_retry) ? rename_result::retry : rename_result::fail;
 }

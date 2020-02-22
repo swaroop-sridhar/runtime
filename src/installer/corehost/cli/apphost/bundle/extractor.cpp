@@ -128,39 +128,62 @@ void extractor_t::clean()
     dir_utils_t::remove_directory_tree(working_extraction_dir());
 }
 
-void extractor_t::commit_dir()
+void extractor_t::commit_full_extraction()
 {
     // Commit an entire new extraction to the final extraction directory
-    // Retry the move operation with some wait in between the attempts. This is to workaround for possible file locking
-    // caused by AV software. Basically the extraction process above writes a bunch of executable files to disk
-    // and some AV software may decide to scan them on write. If this happens the files will be locked which blocks
-    // our ablity to move them.
+    // Retry the move operation with some wait in between the attempts.
+    // This is to workaround for possible file locking caused by AV software.
+    // Basically the extraction process above writes a bunch of executable 
+    // files to disk and some AV software may decide to scan them on write.
+    // If this happens, the files will be locked, which blocks our ablity to move them.
 
-    bool extracted_by_concurrent_process = false;
-    bool extracted_by_current_process =
-        dir_utils_t::rename_with_retries(working_extraction_dir(), extraction_dir(), extracted_by_concurrent_process);
-
-    if (extracted_by_concurrent_process)
+    rename_result result;
+    for (int retry_count = 0; retry_count < 500; retry_count++)
     {
-        // Another process successfully extracted the dependencies
-        trace::info(_X("Extraction completed by another process, aborting current extraction."));
-        clean();
+        result = dir_utils_t::rename(working_extraction_dir(), extraction_dir());
+
+        if (result != rename_result::retry)
+        {
+            break;
+        }
+
+        trace::info(_X("Retrying Rename [%s] to [%s] due to EACCES error"), working_extraction_dir(), extraction_dir());
+        pal::sleep(100);
     }
 
-    if (!extracted_by_current_process && !extracted_by_concurrent_process)
+    switch (result)
     {
+    case rename_result::ok:
+        trace::info(_X("Completed new extraction."));
+        break;
+
+    case rename_result::exists:
+        trace::info(_X("Extraction completed by another process, aborting current extraction."));
+        clean();
+        break;
+
+    case rename_result::fail:
         trace::error(_X("Failure processing application bundle."));
         trace::error(_X("Failed to commit extracted files to directory [%s]."), extraction_dir().c_str());
         throw StatusCode::BundleExtractionFailure;
-    }
+        break;
 
-    trace::info(_X("Completed new extraction."));
+    case rename_result::retry:
+        trace::error(_X("Failure processing application bundle."));
+        trace::error(_X("Retries exhausted trying to commit extracted files to directory [%s]."), extraction_dir().c_str());
+        throw StatusCode::BundleExtractionFailure;
+        break;
+    }
 }
 
-void extractor_t::commit_file(const pal::string_t& relative_path)
-{
-    // Commit individual files to the final extraction directory.
+// Commit individual files to the final extraction directory.
+// Creates any sub-directories in the destination directory as necessary.
+// Returns true if the commit is successful.
+// Returns false if the commit failed, but should be retried.
+// Throws BundleExtractionFailure exception if there's a non-recoverable failure.
 
+bool extractor_t::commit_file(const pal::string_t& relative_path)
+{
     pal::string_t working_file_path = working_extraction_dir();
     append_path(&working_file_path, relative_path.c_str());
 
@@ -172,24 +195,27 @@ void extractor_t::commit_file(const pal::string_t& relative_path)
         dir_utils_t::create_directory_tree(get_directory(final_file_path));
     }
 
-    bool extracted_by_concurrent_process = false;
-    bool extracted_by_current_process =
-        dir_utils_t::rename_with_retries(working_file_path, final_file_path, extracted_by_concurrent_process);
+    rename_result result = dir_utils_t::rename(working_file_path, final_file_path);
 
-    if (extracted_by_concurrent_process)
+    switch (result)
     {
-        // Another process successfully extracted the dependencies
-        trace::info(_X("Extraction completed by another process, aborting current extraction."));
-    }
+    case rename_result::ok:
+        trace::info(_X("Extraction recovered [%s]"), relative_path.c_str());
+        return true;
 
-    if (!extracted_by_current_process && !extracted_by_concurrent_process)
-    {
+    case rename_result::exists:
+        trace::info(_X("Another process recovered [%s]"), relative_path.c_str());
+        return true;
+
+    case rename_result::fail:
         trace::error(_X("Failure processing application bundle."));
         trace::error(_X("Failed to commit extracted files to directory [%s]."), extraction_dir().c_str());
         throw StatusCode::BundleExtractionFailure;
-    }
+        break;
 
-    trace::info(_X("Extraction recovered [%s]"), relative_path.c_str());
+    case rename_result::retry:
+        return false;
+    }
 }
 
 void extractor_t::extract_new(reader_t& reader)
@@ -199,7 +225,7 @@ void extractor_t::extract_new(reader_t& reader)
     {
         extract(entry, reader);
     }
-    commit_dir();
+    commit_full_extraction();
 }
 
 // Verify an existing extraction contains all files listed in the bundle manifest.
@@ -208,6 +234,7 @@ void extractor_t::verify_recover_extraction(reader_t& reader)
 {
     pal::string_t& ext_dir = extraction_dir();
     bool recovered = false;
+    std::list<pal::string_t> retry_commits;
 
     for (const file_entry_t& entry : m_manifest.files)
     {
@@ -223,7 +250,30 @@ void extractor_t::verify_recover_extraction(reader_t& reader)
             }
 
             extract(entry, reader);
-            commit_file(entry.relative_path());
+            if (!commit_file(entry.relative_path()))
+            {
+                retry_commits.push_back(entry.relative_path());
+            }
+        }
+    }
+
+    if (retry_commits.size() > 0)
+    {
+        for (int retry_count = 0; retry_count < 500; retry_count++)
+        {
+            retry_commits.remove_if([this](pal::string_t path) { return commit_file(path); });
+
+            if (retry_commits.size() > 0)
+            {
+                pal::sleep(100);
+            }
+        }
+
+        if (retry_commits.size() > 0)
+        {
+            trace::error(_X("Failure processing application bundle."));
+            trace::error(_X("Retries exhausted trying to commit extracted files to directory [%s]."), extraction_dir().c_str());
+            throw StatusCode::BundleExtractionFailure;
         }
     }
 
