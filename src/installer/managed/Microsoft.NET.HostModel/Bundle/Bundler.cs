@@ -19,26 +19,24 @@ namespace Microsoft.NET.HostModel.Bundle
     {
         readonly string HostName;
         readonly string OutputDir;
-        readonly bool EmbedPDBs;
         readonly string DepsJson;
         readonly string RuntimeConfigJson;
         readonly string RuntimeConfigDevJson;
-
-        readonly Trace trace;
         public readonly Manifest BundleManifest;
 
-        /// <summary>
-        /// Align embedded assemblies such that they can be loaded 
-        /// directly from memory-mapped bundle.
-        /// 
-        /// TBD: Determine if this is the minimum required alignment 
-        /// on all platforms and assembly types (and customize the padding accordingly).
-        /// </summary>
-        public const int AssemblyAlignment = 4096;
+        readonly Trace trace;
+        readonly TargetRuntime targetRuntime;
+        readonly BundleOptions bundleOptions;
+        readonly float TFMVersion;
 
         public static string Version => (Manifest.MajorVersion + "." + Manifest.MinorVersion);
 
-        public Bundler(string hostName, string outputDir, bool embedPDBs = false, bool diagnosticOutput = false)
+        public Bundler(string hostName, string outputDir,
+                       bool embedPDBs = false,
+                       bool diagnosticOutput = false,
+                       OperatingSystem targetOS = OperatingSystem.Unknown,
+                       float targetFrameworkVersion = (float)3.0,
+                       BundleOptions options = BundleOptions.None)
         {
             HostName = hostName;
             OutputDir = Path.GetFullPath(string.IsNullOrEmpty(outputDir) ? Environment.CurrentDirectory : outputDir);
@@ -48,9 +46,11 @@ namespace Microsoft.NET.HostModel.Bundle
             RuntimeConfigJson = baseName + ".runtimeconfig.json";
             RuntimeConfigDevJson = baseName + ".runtimeconfig.dev.json";
 
-            EmbedPDBs = embedPDBs;
             trace = new Trace(diagnosticOutput);
+            TFMVersion = targetFrameworkVersion;
             BundleManifest = new Manifest();
+            targetRuntime = new TargetRuntime(targetOS);
+            bundleOptions = options;
         }
 
         /// <summary>
@@ -58,15 +58,17 @@ namespace Microsoft.NET.HostModel.Bundle
         /// </summary>
         /// <returns>Returns the offset of the start 'file' within 'bundle'</returns>
 
-        long AddToBundle(Stream bundle, Stream file, bool shouldAlign)
+        long AddToBundle(Stream bundle, Stream file, FileType type)
         {
-            if (shouldAlign)
+            if (type == FileType.Assembly)
             {
-                long misalignment = (bundle.Position % AssemblyAlignment);
+                // Align embedded assemblies such that they can be efficiently mapped from the bundle.
+                const int assemblyAlignment = 16;
+                long misalignment = (bundle.Position % assemblyAlignment);
 
                 if (misalignment != 0)
                 {
-                    long padding = AssemblyAlignment - misalignment;
+                    long padding = assemblyAlignment - misalignment;
                     bundle.Position += padding;
                 }
             }
@@ -80,27 +82,54 @@ namespace Microsoft.NET.HostModel.Bundle
 
         bool ShouldEmbed(string fileRelativePath)
         {
-            if (fileRelativePath.Equals(HostName))
-            {
-                // The bundle starts with the host, so ignore it while embedding.
-                return false;
-            }
-
-            if (fileRelativePath.Equals(RuntimeConfigDevJson))
-            {
-                // Ignore the machine specific configuration file.
-                return false;
-            }
-
-            if (Path.GetExtension(fileRelativePath).ToLowerInvariant().Equals(".pdb"))
-            {
-                return EmbedPDBs;
-            }
-
-            return true;
+            return fileRelativePath.Equals(HostName) ||
+                   fileRelativePath.Equals(RuntimeConfigDevJson);
         }
 
-        FileType InferType(string fileRelativePath, Stream file)
+        bool ShouldEmbed(FileType type)
+        {
+            switch (type)
+            {
+                case FileType.Assembly:
+                case FileType.DepsJson:
+                case FileType.RuntimeConfigJson:
+                    return true;
+
+                case FileType.NativeBinary:
+                    return bundleOptions.HasFlag(BundleOptions.BundleNativeBinaries);
+
+                case FileType.Symbols:
+                    return bundleOptions.HasFlag(BundleOptions.BundleSymbolFiles);
+
+                default:
+                    return bundleOptions.HasFlag(BundleOptions.BundleOtherFiles);
+            }
+        }
+
+
+        bool IsAssembly(string path, out bool isPE)
+        {
+            isPE = false;
+
+            using (FileStream file = File.OpenRead(path))
+            {
+                try
+                {
+                    PEReader peReader = new PEReader(file);
+                    CorHeader corHeader = peReader.PEHeaders.CorHeader;
+
+                    isPE = true; // If peReader.PEHeaders doesn't throw, it is a valid PEImage
+                    return corHeader != null;
+                }
+                catch (BadImageFormatException)
+                {
+                }
+            }
+
+            return false;
+        }
+
+        FileType InferType(string fileRelativePath)
         {
             if (fileRelativePath.Equals(DepsJson))
             {
@@ -112,17 +141,22 @@ namespace Microsoft.NET.HostModel.Bundle
                 return FileType.RuntimeConfigJson;
             }
 
-            try
+            if (Path.GetExtension(fileRelativePath).ToLowerInvariant().Equals(".pdb"))
             {
-                PEReader peReader = new PEReader(file);
-                CorHeader corHeader = peReader.PEHeaders.CorHeader;
-                if (corHeader != null)
-                {
-                    return ((corHeader.Flags & CorFlags.ILOnly) != 0) ? FileType.IL : FileType.Ready2Run;
-                }
+                return FileType.Symbols;
             }
-            catch (BadImageFormatException)
+
+            bool isPE;
+            if (IsAssembly(fileRelativePath, out isPE))
             {
+                return FileType.Assembly;
+            }
+
+            bool isNativeBinary = targetRuntime.IsWindows ? isPE : targetRuntime.IsNativeBinary(fileRelativePath);
+
+            if (isNativeBinary)
+            {
+                return FileType.NativeBinary;
             }
 
             return FileType.Other;
@@ -179,17 +213,7 @@ namespace Microsoft.NET.HostModel.Bundle
                 Stream bundle = writer.BaseStream;
                 bundle.Position = bundle.Length;
 
-                // Write the files from the specification into the bundle
-                // Alignment: 
-                //   Assemblies are written aligned at "AssemblyAlignment" bytes to facilitate loading from bundle
-                //   Remaining files (native binaries and other files) are written without alignment.
-                //
-                // The unaligned files are written first, followed by the aligned files, 
-                // and finally the bundle manifest. 
-                // TODO: Order file writes to minimize file size.
-
                 List<Tuple<FileSpec, FileType>> ailgnedFiles = new List<Tuple<FileSpec, FileType>>();
-                bool NeedsAlignment(FileType type) => type == FileType.IL || type == FileType.Ready2Run;
 
                 foreach (var fileSpec in fileSpecs)
                 {
@@ -199,30 +223,17 @@ namespace Microsoft.NET.HostModel.Bundle
                         continue;
                     }
 
-                    using (FileStream file = File.OpenRead(fileSpec.SourcePath))
+                    FileType type = InferType(fileSpec.BundleRelativePath);
+
+                    if (!ShouldEmbed(type))
                     {
-                        FileType type = InferType(fileSpec.BundleRelativePath, file);
-
-                        if (NeedsAlignment(type))
-                        {
-                            ailgnedFiles.Add(Tuple.Create(fileSpec, type));
-                            continue;
-                        }
-
-                        long startOffset = AddToBundle(bundle, file, shouldAlign:false);
-                        FileEntry entry = BundleManifest.AddEntry(type, fileSpec.BundleRelativePath, startOffset, file.Length);
-                        trace.Log($"Embed: {entry}");
+                        trace.Log($"Skip {type}: {fileSpec.BundleRelativePath}");
+                        continue;
                     }
-                }
-
-                foreach (var tuple in ailgnedFiles)
-                {
-                    var fileSpec = tuple.Item1;
-                    var type = tuple.Item2;
 
                     using (FileStream file = File.OpenRead(fileSpec.SourcePath))
                     {
-                        long startOffset = AddToBundle(bundle, file, shouldAlign: true);
+                        long startOffset = AddToBundle(bundle, file, type);
                         FileEntry entry = BundleManifest.AddEntry(type, fileSpec.BundleRelativePath, startOffset, file.Length);
                         trace.Log($"Embed: {entry}");
                     }

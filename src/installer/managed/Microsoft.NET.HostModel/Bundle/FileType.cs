@@ -12,11 +12,12 @@ namespace Microsoft.NET.HostModel.Bundle
     /// </summary>
     public enum FileType : byte
     {
-        IL,                // IL Assemblies
-        Ready2Run,         // R2R assemblies
+        Assembly,          // IL and R2R Assemblies
+        NativeBinary,      // NativeBinaries
         DepsJson,          // .deps.json configuration file
         RuntimeConfigJson, // .runtimeconfig.json configuration file
-        Other              // Other files, including native binaries
+        Symbols,           // PDB Files
+        Other              // Other Files
     };
 }
 
