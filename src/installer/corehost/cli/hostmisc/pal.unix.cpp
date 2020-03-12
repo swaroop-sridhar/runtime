@@ -58,7 +58,7 @@ bool pal::touch_file(const pal::string_t& path)
     return true;
 }
 
-void* pal::map_file_readonly(const pal::string_t& path, size_t& length)
+void* pal::mmap_read(const string_t& path, size_t* length)
 {
     int fd = open(path.c_str(), O_RDONLY);
     if (fd == -1)
@@ -74,11 +74,16 @@ void* pal::map_file_readonly(const pal::string_t& path, size_t& length)
         close(fd);
         return nullptr;
     }
+    size_t size = buf.st_size;
 
-    length = buf.st_size;
-    void* address = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
+    if (length != nullptr)
+    {
+        *length = size;
+    }
 
-    if(address == nullptr)
+    void* address = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+
+    if (address == nullptr)
     {
         trace::error(_X("Failed to map file. mmap(%s) failed with error %d"), path.c_str(), errno);
         close(fd);
