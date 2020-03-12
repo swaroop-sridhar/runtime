@@ -63,17 +63,21 @@ namespace BundleTests.Helpers
         // Currently, AppHost can only handle bundles if all content is extracted to disk on startup.
         // Therefore, the BundleOption is BundleAllContent by default.
         // The default should be BundleOptions.None once host/runtime no longer requires full-extraction.
+        public static Bundler NewBundler(TestProjectFixture fixture,
+                                         BundleOptions options = BundleOptions.BundleAllContent,
+                                         Version targetFrameworkVersion = null)
+        {
+            var hostName = GetHostName(fixture);
+            var bundleDir = GetBundleDir(fixture);
+
+            return new Bundler(hostName, bundleDir.FullName, options, targetFrameworkVersion: targetFrameworkVersion);
+        }
         public static string BundleApp(TestProjectFixture fixture,
                                        BundleOptions options = BundleOptions.BundleAllContent,
                                        Version targetFrameworkVersion = null)
         {
-            var hostName = GetHostName(fixture);
             string publishPath = GetPublishPath(fixture);
-            var bundleDir = GetBundleDir(fixture);
-
-            var bundler = new Bundler(hostName, bundleDir.FullName, options, targetFrameworkVersion: targetFrameworkVersion);
-            string singleFile = bundler.GenerateBundle(publishPath);
-            return singleFile;
+            return NewBundler(fixture, options, targetFrameworkVersion).GenerateBundle(publishPath);
         }
 
         public static void AddLongNameContentToAppWithSubDirs(TestProjectFixture fixture)
