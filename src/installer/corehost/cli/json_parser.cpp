@@ -15,6 +15,7 @@
 #include "utils.h"
 #include <cassert>
 #include <cstdint>
+#include "bundle/info.h"
 
 namespace {
 
@@ -42,9 +43,9 @@ std::streampos get_utf8_bom_length(pal::istream_t& stream)
     return 3;
 }
 
-void get_line_column_from_offset(const std::vector<char>& json, size_t offset, int *line, int *column)
+void get_line_column_from_offset(const char* data, uint64_t size, size_t offset, int *line, int *column)
 {
-    assert(offset < json.size());
+    assert(offset < size);
 
     *line = *column = 1;
 
@@ -52,12 +53,12 @@ void get_line_column_from_offset(const std::vector<char>& json, size_t offset, i
     {
         (*column)++;
 
-        if (json[i] == '\n')
+        if (data[i] == '\n')
         {
             (*line)++;
             *column = 1;
         }
-        else if (json[i] == '\r' && json[i + 1] == '\n')
+        else if (data[i] == '\r' && data[i + 1] == '\n')
         {
             (*line)++;
             *column = 1;
@@ -75,20 +76,18 @@ void json_parser_t::realloc_buffer(size_t size)
     m_json[size] = '\0';
 }
 
-bool json_parser_t::parse_json(const pal::string_t& context)
+bool json_parser_t::parse_json(const char* data, int64_t size, const pal::string_t& context)
 {
-    assert(!m_json.empty());
-
 #ifdef _WIN32
     // Can't use in-situ parsing on Windows, as JSON data is encoded in
     // UTF-8 and the host expects wide strings.  m_document will store
     // data in UTF-16 (with pal::char_t as the character type), but it
     // has to know that data is encoded in UTF-8 to convert during parsing.
     constexpr auto flags = rapidjson::ParseFlag::kParseStopWhenDoneFlag
-                         | rapidjson::ParseFlag::kParseCommentsFlag;
-    m_document.Parse<flags, rapidjson::UTF8<>>(m_json.data());
+        | rapidjson::ParseFlag::kParseCommentsFlag;
+    m_document.Parse<flags, rapidjson::UTF8<>>(data);
 #else
-    m_document.ParseInsitu<rapidjson::ParseFlag::kParseCommentsFlag>(m_json.data());
+    m_document.ParseInsitu<rapidjson::ParseFlag::kParseCommentsFlag>(data);
 #endif
 
     if (m_document.HasParseError())
@@ -96,11 +95,11 @@ bool json_parser_t::parse_json(const pal::string_t& context)
         int line, column;
         size_t offset = m_document.GetErrorOffset();
 
-        get_line_column_from_offset(m_json, offset, &line, &column);
+        get_line_column_from_offset(data, size, offset, &line, &column);
 
         trace::error(_X("A JSON parsing exception occurred in [%s], offset %zu (line %d, column %d): %s"),
-                     context.c_str(), offset, line, column,
-                     rapidjson::GetParseError_En(m_document.GetParseError()));
+            context.c_str(), offset, line, column,
+            rapidjson::GetParseError_En(m_document.GetParseError()));
         return false;
     }
 
@@ -130,5 +129,27 @@ bool json_parser_t::parse_stream(pal::istream_t& stream,
     realloc_buffer(stream_size - current_pos);
     stream.read(m_json.data(), stream_size - current_pos);
 
-    return parse_json(context);
+    return parse_json(m_json.data(), m_json.size(), context);
+}
+
+bool json_parser_t::parse_file(const pal::string_t& path)
+{
+    // This code assumes that the caller has checked that the file `path` exists
+    // either within the bundle, or as a real file on disk.
+
+    if (bundle::info_t::is_single_file_bundle())
+    {
+        const bundle::location_t *location = nullptr;
+        const int8_t* data = bundle::info_t::config_t::map(path, location);
+
+        if (data != nullptr)
+        {
+            bool result = parse_json((const char*)data, location->size, path);
+            bundle::info_t::config_t::unmap(data, location);
+            return result;
+        }
+    }
+
+    pal::ifstream_t file{ path };
+    return parse_stream(file, path);
 }

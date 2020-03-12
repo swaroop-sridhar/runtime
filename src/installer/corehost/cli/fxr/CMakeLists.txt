@@ -22,6 +22,9 @@ set(SOURCES
     ./hostpolicy_resolver.cpp
     ./sdk_info.cpp
     ./sdk_resolver.cpp
+    ../bundle/info.cpp
+    ../bundle/reader.cpp
+    ../bundle/header.cpp
 )
 
 set(HEADERS
@@ -39,6 +42,9 @@ set(HEADERS
     ./hostpolicy_resolver.h
     ./sdk_info.h
     ./sdk_resolver.h
+    ../bundle/info.h
+    ../bundle/reader.h
+    ../bundle/header.h
 )
 
 include(../lib.cmake)
