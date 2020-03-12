@@ -7,20 +7,26 @@
 
 #include "pal.h"
 #include "host_interface.h"
+#include "single_file_info.h"
 
 struct host_startup_info_t
 {
-    host_startup_info_t() {}
+    host_startup_info_t()
+        : single_file_info(nullptr) {}
+
     host_startup_info_t(
         const pal::char_t* host_path_value,
         const pal::char_t* dotnet_root_value,
-        const pal::char_t* app_path_value);
+        const pal::char_t* app_path_value,
+        const single_file_info_t *single_file_info_value);
 
     void parse(
         int argc,
         const pal::char_t* argv[]);
 
     bool is_valid(host_mode_t mode) const;
+
+    bool is_single_file_app() const { return single_file_info != nullptr; }
 
     const pal::string_t get_app_name() const;
 
@@ -29,6 +35,9 @@ struct host_startup_info_t
     pal::string_t host_path;    // The path to the current hosting binary.
     pal::string_t dotnet_root;  // The path to the framework.
     pal::string_t app_path;     // For apphost, the path to the app dll; for muxer, not applicable as this information is not yet parsed.
+
+    const single_file_info_t* single_file_info; // Single-file bundle information, if any
+
 };
 
 #endif // __HOST_STARTUP_INFO_H_

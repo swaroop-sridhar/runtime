@@ -11,10 +11,12 @@
 host_startup_info_t::host_startup_info_t(
     const pal::char_t* host_path_value,
     const pal::char_t* dotnet_root_value,
-    const pal::char_t* app_path_value)
+    const pal::char_t* app_path_value,
+    const single_file_info_t *single_file_info_value)
     : host_path(host_path_value)
     , dotnet_root(dotnet_root_value)
-    , app_path(app_path_value) {}
+    , app_path(app_path_value)
+    , single_file_info(single_file_info_value) {}
 
 // Determine if string is a valid path, and if so then fix up by using realpath()
 bool get_path_from_argv(pal::string_t *path)

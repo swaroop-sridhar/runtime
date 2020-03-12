@@ -293,6 +293,11 @@ namespace
 
     host_mode_t detect_operating_mode(const host_startup_info_t& host_info)
     {
+        if (host_info.is_single_file_app())
+        {
+            return host_mode_t::apphost;
+        }
+
         if (coreclr_exists_in_dir(host_info.dotnet_root))
         {
             // Detect between standalone apphost or legacy split mode (specifying --depsfile and --runtimeconfig)

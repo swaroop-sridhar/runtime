@@ -24,11 +24,25 @@ namespace
     }
 }
 
+SHARED_API int HOSTFXR_CALLTYPE hostfxr_main_single_file_info(const int argc, const pal::char_t* argv[],
+                                                              const pal::char_t* host_path, const pal::char_t* dotnet_root, const pal::char_t* app_path,
+                                                              int64_t deps_json_offset, int64_t deps_json_size,
+                                                              int64_t runtime_config_json_offset, int64_t runtime_config_json_size)
+{
+    trace_hostfxr_entry_point(_X("hostfxr_main_startupinfo"));
+
+    single_file_info_t single_file_info(deps_json_offset, deps_json_size, runtime_config_json_offset, runtime_config_json_size, nullptr);
+    host_startup_info_t startup_info(host_path, dotnet_root, app_path, &single_file_info);
+
+    return fx_muxer_t::execute(pal::string_t(), argc, argv, startup_info, nullptr, 0, nullptr);
+}
+
+
 SHARED_API int HOSTFXR_CALLTYPE hostfxr_main_startupinfo(const int argc, const pal::char_t* argv[], const pal::char_t* host_path, const pal::char_t* dotnet_root, const pal::char_t* app_path)
 {
     trace_hostfxr_entry_point(_X("hostfxr_main_startupinfo"));
 
-    host_startup_info_t startup_info(host_path, dotnet_root, app_path);
+    host_startup_info_t startup_info(host_path, dotnet_root, app_path, nullptr);
 
     return fx_muxer_t::execute(pal::string_t(), argc, argv, startup_info, nullptr, 0, nullptr);
 }

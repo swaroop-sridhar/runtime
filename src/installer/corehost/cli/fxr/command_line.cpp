@@ -144,7 +144,7 @@ namespace
         if (mode == host_mode_t::apphost)
         {
             app_candidate = host_info.app_path;
-            doesAppExist = pal::realpath(&app_candidate);
+            doesAppExist = host_info.is_single_file_app() || pal::realpath(&app_candidate);
         }
         else
         {
