@@ -81,12 +81,8 @@ namespace BundleTests.Helpers
         // instead of the SDK via /p:PublishSingleFile=true.
         // This is necessary when the test needs the latest changes in the AppHost, 
         // which may not (yet) be available in the SDK.
-        //
-        // Currently, AppHost can only handle bundles if all content is extracted to disk on startup.
-        // Therefore, the BundleOption is BundleAllContent by default.
-        // The default should be BundleOptions.None once host/runtime no longer requires full-extraction.
         public static string BundleApp(TestProjectFixture fixture,
-                                       BundleOptions options = BundleOptions.BundleAllContent,
+                                       BundleOptions options = BundleOptions.None,
                                        Version targetFrameworkVersion = null)
         {
             var hostName = GetHostName(fixture);

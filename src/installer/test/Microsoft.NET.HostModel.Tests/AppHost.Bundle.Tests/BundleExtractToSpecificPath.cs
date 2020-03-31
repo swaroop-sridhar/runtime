@@ -34,7 +34,7 @@ namespace AppHost.Bundle.Tests
 
             // Publish the bundle
             var bundleDir = BundleHelper.GetBundleDir(fixture);
-            var bundler = new Bundler(hostName, bundleDir.FullName, BundleOptions.BundleAllContent);
+            var bundler = new Bundler(hostName, bundleDir.FullName);
             string singleFile = BundleHelper.GenerateBundle(bundler, publishPath);
 
             // Compute bundled files
@@ -76,7 +76,7 @@ namespace AppHost.Bundle.Tests
 
             // Publish the bundle
             var bundleDir = BundleHelper.GetBundleDir(fixture);
-            var bundler = new Bundler(hostName, bundleDir.FullName, BundleOptions.BundleAllContent);
+            var bundler = new Bundler(hostName, bundleDir.FullName);
             string singleFile = BundleHelper.GenerateBundle(bundler, publishPath);
 
             // Create a directory for extraction.
@@ -189,7 +189,7 @@ namespace AppHost.Bundle.Tests
 
             public void Dispose()
             {
-                TestFixture.Dispose();
+                //TestFixture.Dispose();
             }
         }
     }

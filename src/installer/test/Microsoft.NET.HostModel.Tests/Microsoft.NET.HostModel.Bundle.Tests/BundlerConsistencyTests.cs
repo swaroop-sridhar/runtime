@@ -177,7 +177,7 @@ namespace Microsoft.NET.HostModel.Tests
             string publishPath = BundleHelper.GetPublishPath(fixture);
             var bundleDir = BundleHelper.GetBundleDir(fixture);
 
-            var bundler = new Bundler(hostName, bundleDir.FullName, BundleOptions.BundleAllContent);
+            var bundler = new Bundler(hostName, bundleDir.FullName);
             BundleHelper.GenerateBundle(bundler, publishPath);
 
             bundler.BundleManifest.Files.ForEach(file => 
@@ -193,7 +193,7 @@ namespace Microsoft.NET.HostModel.Tests
             var bundleDir = BundleHelper.GetBundleDir(fixture);
             string publishPath = BundleHelper.GetPublishPath(fixture);
 
-            var bundler = new Bundler(hostName, bundleDir.FullName, BundleOptions.BundleAllContent);
+            var bundler = new Bundler(hostName, bundleDir.FullName);
             string singleFile = BundleHelper.GenerateBundle(bundler, publishPath);
 
             using (var file = File.OpenWrite(singleFile))
