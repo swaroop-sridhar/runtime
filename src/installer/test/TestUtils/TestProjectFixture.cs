@@ -291,8 +291,7 @@ namespace Microsoft.DotNet.CoreSetup.Test
 
             if (selfContained != null)
             {
-                publishArgs.Add("--self-contained");
-                publishArgs.Add(selfContained);
+                publishArgs.Add($"--self-contained={selfContained}");
             }
 
             if (outputDirectory != null)

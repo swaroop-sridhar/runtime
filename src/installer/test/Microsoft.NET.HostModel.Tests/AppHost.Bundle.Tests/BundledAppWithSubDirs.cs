@@ -93,6 +93,7 @@ namespace AppHost.Bundle.Tests
                 TestFrameworkDependentFixture
                     .EnsureRestoredForRid(TestFrameworkDependentFixture.CurrentRid, RepoDirectories.CorehostPackages)
                     .PublishProject(runtime: TestFrameworkDependentFixture.CurrentRid,
+                                    selfContained: "false",
                                     outputDirectory: BundleHelper.GetPublishPath(TestFrameworkDependentFixture));
 
                 TestSelfContainedFixture = new TestProjectFixture("AppWithSubDirs", RepoDirectories);
@@ -113,9 +114,9 @@ namespace AppHost.Bundle.Tests
 
             public void Dispose()
             {
-                TestFrameworkDependentFixture.Dispose();
-                TestSelfContainedFixture.Dispose();
-                TestAppWithEmptyFileFixture.Dispose();
+                //TestFrameworkDependentFixture.Dispose();
+                //TestSelfContainedFixture.Dispose();
+                //TestAppWithEmptyFileFixture.Dispose();
             }
         }
     }
