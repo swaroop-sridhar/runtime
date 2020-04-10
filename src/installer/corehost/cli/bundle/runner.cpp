@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -48,11 +48,11 @@ StatusCode runner_t::extract()
     }
 }
 
-const file_entry_t*  runner_t::probe(const pal::string_t& path) const
+const file_entry_t*  runner_t::probe(const pal::char_t *relative_path) const
 {
     for (const file_entry_t& entry : m_manifest.files)
     {
-        if (entry.relative_path() == path)
+        if (pal::pathcmp(entry.relative_path().c_str(), relative_path) == 0)
         {
             return &entry;
         }
@@ -64,7 +64,7 @@ const file_entry_t*  runner_t::probe(const pal::string_t& path) const
 bool runner_t::locate(const pal::string_t& relative_path, pal::string_t& full_path) const
 {
     const bundle::runner_t* app = bundle::runner_t::app();
-    const bundle::file_entry_t* entry = app->probe(relative_path);
+    const bundle::file_entry_t* entry = app->probe(relative_path.c_str());
 
     if (entry == nullptr)
     {
@@ -80,4 +80,29 @@ bool runner_t::locate(const pal::string_t& relative_path, pal::string_t& full_pa
     append_path(&full_path, relative_path.c_str());
 
     return true;
+}
+
+typedef bool bundle_probe_fn(const char*, int64_t*, int64_t*);
+
+bool runner_t::bundle_probe(const char *path, int64_t *offset, int64_t *size)
+{
+    // ಇಲ್ಲಿ Unicode ಇಂದ UTF8 ಗೆ Unix OS ನಲ್ಲಿ ಮಾರ್ಪಡಿಸಬೇಕು. 
+    // ಮುಂದುವರಿಸಲಾಗುವುದು
+    const file_entry_t* entry = app()->probe(path);
+    if (entry != nullptr)
+    {
+        *offset = entry->offset;
+        *size = entry->size;
+
+        assert(*offset != 0);
+
+        return true;
+    }
+
+    return false;
+}
+
+const char* runner_t::get_bundle_probe()
+{
+
 }

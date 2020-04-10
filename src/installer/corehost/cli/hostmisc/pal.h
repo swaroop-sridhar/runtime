@@ -146,6 +146,7 @@ namespace pal
     inline int strcasecmp(const char_t* str1, const char_t* str2) { return ::_wcsicmp(str1, str2); }
     inline int strncmp(const char_t* str1, const char_t* str2, int len) { return ::wcsncmp(str1, str2, len); }
     inline int strncasecmp(const char_t* str1, const char_t* str2, int len) { return ::_wcsnicmp(str1, str2, len); }
+    inline int pathcmp(const char_t* path1, const char_t* path2) { return strcasecmp(path1, path2); }
 
     inline size_t strlen(const char_t* str) { return ::wcslen(str); }
     inline FILE * file_open(const string_t& path, const char_t* mode) { return ::_wfopen(path.c_str(), mode); }
@@ -204,6 +205,7 @@ namespace pal
     inline int strcasecmp(const char_t* str1, const char_t* str2) { return ::strcasecmp(str1, str2); }
     inline int strncmp(const char_t* str1, const char_t* str2, int len) { return ::strncmp(str1, str2, len); }
     inline int strncasecmp(const char_t* str1, const char_t* str2, int len) { return ::strncasecmp(str1, str2, len); }
+    inline int pathcmp(const char_t* path1, const char_t* path2) { return strcmp(path1, path2); }
 
     inline size_t strlen(const char_t* str) { return ::strlen(str); }
     inline FILE * file_open(const string_t& path, const char_t* mode) { return fopen(path.c_str(), mode); }

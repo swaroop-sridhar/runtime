@@ -27,7 +27,7 @@ namespace bundle
 
         const pal::string_t& extraction_path() const { return m_extraction_path; }
 
-        const file_entry_t *probe(const pal::string_t& path) const;
+        const file_entry_t *probe(const pal::char_t* relative_path) const;
         bool locate(const pal::string_t& relative_path, pal::string_t& full_path) const;
 
         static StatusCode process_manifest_and_extract()
@@ -36,6 +36,15 @@ namespace bundle
         }
 
         static const runner_t* app() { return (const runner_t*)the_app; }
+
+        // Probe the app-bundle for the file 'path' and return its location ('offset', 'size') if found.
+        // This method is intnded to be used by the runtime to probe for bundled assemblies
+        // This method assumes that the currently executing app is a single-file bundle.
+        static bool bundle_probe(const char* path, int64_t *offset, int64_t *size );
+
+        // If this app is a single-file bundle, returns bundle_probe function pointer encoded as a string.
+        // If not, returns nullptr.
+        static const char* get_bundle_probe();
 
     private:
 
