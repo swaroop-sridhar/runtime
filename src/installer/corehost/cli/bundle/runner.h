@@ -38,7 +38,7 @@ namespace bundle
         static const runner_t* app() { return (const runner_t*)the_app; }
 
         // Obtain the bundle_probe function (encoded as a string) to be passed to the runtime.
-        static pal::string_t get_bundle_probe();
+        static void get_bundle_probe(pal::string_t &probe);
 
     private:
 

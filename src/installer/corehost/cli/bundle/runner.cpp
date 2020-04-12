@@ -113,16 +113,16 @@ bool __stdcall runner_t::bundle_probe(const wchar_t *path, int64_t *offset, int6
     return false;
 }
 
-pal::string_t runner_t::get_bundle_probe()
+void runner_t::get_bundle_probe(pal::string_t &probe)
 {
     if (!is_single_file_bundle())
     {
-        return _X("");
+        probe.assign(_X(""));
     }
 
     pal::stringstream_t ptr_stream;
     ptr_stream << "0x";
     ptr_stream << std::hex << &bundle_probe;
 
-    return ptr_stream.str();
+    probe.assign(ptr_stream.str());
 }

@@ -202,7 +202,10 @@ int hostpolicy_context_t::initialize(hostpolicy_init_t &hostpolicy_init, const a
     // Single-File Bundle Probe
     if (bundle::info_t::is_single_file_bundle())
     {
-         coreclr_properties.add(common_property::BundleProbe, bundle::runner_t::get_bundle_probe().c_str());
+        pal::string_t bundle_probe;
+        bundle::runner_t::get_bundle_probe(bundle_probe);
+
+        coreclr_properties.add(common_property::BundleProbe, bundle_probe.c_str());
     }
 
     return StatusCode::Success;
