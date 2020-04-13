@@ -67,7 +67,7 @@ namespace BundleProbeTester
             }
 
             string probeString = probeObject as string;
-            IntPtr probePtr = (IntPtr)Convert.ToUInt64(probeString, 16);
+            IntPtr probePtr = (IntPtr)Convert.ToUInt64(probeString, 10);
             BundleProbeDelegate bundleProbeDelegate = Marshal.GetDelegateForFunctionPointer<BundleProbeDelegate>(probePtr);
             bool success =
                 Probe(bundleProbeDelegate, "BundleProbeTester.dll", isExpected: true) &&

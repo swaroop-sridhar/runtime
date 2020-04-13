@@ -148,7 +148,8 @@ namespace pal
     inline int strncasecmp(const char_t* str1, const char_t* str2, int len) { return ::_wcsnicmp(str1, str2, len); }
     inline int pathcmp(const pal::string_t &path1, const pal::string_t &path2) { return strcasecmp(path1.c_str(), path2.c_str()); }
     inline string_t to_string(int value) { return std::to_wstring(value); }
-	
+    inline string_t to_string(size_t value) { return std::to_wstring(value); }
+
     inline size_t strlen(const char_t* str) { return ::wcslen(str); }
     inline FILE * file_open(const string_t& path, const char_t* mode) { return ::_wfopen(path.c_str(), mode); }
 
@@ -208,6 +209,7 @@ namespace pal
     inline int strncasecmp(const char_t* str1, const char_t* str2, int len) { return ::strncasecmp(str1, str2, len); }
     inline int pathcmp(const pal::string_t& path1, const pal::string_t& path2) { return strcmp(path1.c_str(), path2.c_str()); }
     inline string_t to_string(int value) { return std::to_string(value); }
+    inline string_t to_string(size_t value) { return std::to_string(value); }
 
     inline size_t strlen(const char_t* str) { return ::strlen(str); }
     inline FILE * file_open(const string_t& path, const char_t* mode) { return fopen(path.c_str(), mode); }

@@ -82,7 +82,7 @@ bool runner_t::locate(const pal::string_t& relative_path, pal::string_t& full_pa
     return true;
 }
 
-bool __stdcall runner_t::bundle_probe(const wchar_t *path, int64_t *offset, int64_t *size)
+bool STDMETHODCALLTYPE runner_t::bundle_probe(const wchar_t *path, int64_t *offset, int64_t *size)
 {
     if (path == nullptr)
     {
@@ -120,9 +120,9 @@ pal::string_t runner_t::get_bundle_probe()
         return _X("");
     }
 
-    pal::stringstream_t ptr_stream;
-    ptr_stream << "0x";
-    ptr_stream << std::hex << &bundle_probe;
+    trace::info(_X("Ptr = %lx %ld"), &bundle_probe, &bundle_probe);
+    pal::string_t str = pal::to_string((size_t)&bundle_probe);
 
-    return ptr_stream.str();
+    trace::info(_X("Str = %lx"), &bundle_probe);
+    return str;
 }

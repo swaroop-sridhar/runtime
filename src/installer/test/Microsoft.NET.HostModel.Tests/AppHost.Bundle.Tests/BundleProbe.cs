@@ -70,7 +70,7 @@ namespace AppHost.Bundle.Tests
 
             public void Dispose()
             {
-                TestFixture.Dispose();
+                //TestFixture.Dispose();
             }
         }
     }
