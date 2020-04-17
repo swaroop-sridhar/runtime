@@ -31,7 +31,7 @@ namespace
     // Using a unicode encoded path presents a uniform interface to the runtime
     // and minimizes the number if Unicode <-> UTF8 conversions necessary.
 
-    bool STDMETHODCALLTYPE bundle_probe(const wchar_t* path, int64_t* offset, int64_t* size)
+    bool STDMETHODCALLTYPE bundle_probe(const char16_t* path, int64_t* offset, int64_t* size)
     {
         if (path == nullptr)
         {
