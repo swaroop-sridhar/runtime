@@ -147,17 +147,10 @@ bool json_parser_t::parse_file(const pal::string_t& path)
 
         if (m_bundle_data != nullptr)
         {
-#if !defined(_WIN32)
-            // On Linux, the in-situ parser checks that the input stream is null-terminated
-            // once the root element is completely parsed.
-            // Ideally, the parser should check the size of the input stream, but it currently doesn't take the size into consideration.
-            // Instead of locally modifying RapidJson code, we simply add a null-terminator at the end of the stream.
-            // In the current implementation, it is safe to add the null-terminator because bundle::info_t::config_t::map() maps the
-            // enture single-file bundle, and there is content beyond all embeded files.
-            // This update is not performed on Windows in order to avoid an unnecessary copy-on-write.
+            // Ensure that the m_bundle_data stream is null terminated, because ParseInsitu() requires a null-terminated input string.
+            // The null terminator is written by the bundler beyond the json contents, and is not included in m_bundle_location->size.
+            assert(m_bundle_data[m_bundle_location->size] == 0);
 
-            m_bundle_data[m_bundle_location->size] = 0;
-#endif
             bool result = parse_json(m_bundle_data, m_bundle_location->size, path);
             return result;
         }

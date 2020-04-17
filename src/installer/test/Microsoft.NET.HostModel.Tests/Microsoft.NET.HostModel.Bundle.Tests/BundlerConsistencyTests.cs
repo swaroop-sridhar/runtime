@@ -144,6 +144,17 @@ namespace Microsoft.NET.HostModel.Tests
         }
 
         [Fact]
+        public void TestFileSizes()
+        {
+            var fixture = sharedTestState.TestFixture.Copy();
+            var bundler = BundleHelper.Bundle(fixture);
+            var publishPath = BundleHelper.GetPublishPath(fixture);
+
+            bundler.BundleManifest.Files.ForEach(file =>
+                Assert.True(file.Size == new FileInfo(Path.Combine(publishPath, file.RelativePath)).Length));
+        }
+
+        [Fact]
         public void TestAssemblyAlignment()
         {
             var fixture = sharedTestState.TestFixture.Copy();
@@ -151,6 +162,26 @@ namespace Microsoft.NET.HostModel.Tests
 
             bundler.BundleManifest.Files.ForEach(file => 
                 Assert.True((file.Type != FileType.Assembly) || (file.Offset % Bundler.AssemblyAlignment == 0)));
+        }
+
+        [Fact]
+        public void TestJsonFilesNullTerminated()
+        {
+            var fixture = sharedTestState.TestFixture.Copy();
+            string singleFile;
+            Bundler bundler = BundleHelper.BundleApp(fixture, out singleFile);
+
+            using (var stream = File.OpenRead(singleFile))
+            {
+                foreach (var file in bundler.BundleManifest.Files)
+                {
+                    if (file.Type == FileType.DepsJson || file.Type == FileType.RuntimeConfigJson)
+                    {
+                        stream.Position = file.Offset + file.Size;
+                        Assert.True(stream.ReadByte() == 0);
+                    }
+                }
+            }
         }
 
         [Fact]

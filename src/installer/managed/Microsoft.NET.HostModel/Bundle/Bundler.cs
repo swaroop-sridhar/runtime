@@ -77,6 +77,16 @@ namespace Microsoft.NET.HostModel.Bundle
             long startOffset = bundle.Position;
             file.CopyTo(bundle);
 
+            if (type == FileType.DepsJson || type == FileType.RuntimeConfigJson)
+            {
+                // On Linux, the Host uses RapidJson InSitu parsing of json files memory mapped from the bundle.
+                // The RapidJson parser requires a null-terminated character stream as input.
+                // Therefore add a null terminator.
+                // The null-terminator is not counted as part of file.Size in the bundle meta-data, so that
+                // file.Size matches the original file size.
+                bundle.WriteByte(0);
+            }
+
             return startOffset;
         }
 
