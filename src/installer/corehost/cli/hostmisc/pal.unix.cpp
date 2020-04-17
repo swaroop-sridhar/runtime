@@ -251,21 +251,14 @@ int pal::xtoi(const char_t* input)
     return atoi(input);
 }
 
-bool pal::unicode_palstring(const wchar_t* str, pal::string_t* out)
+bool pal::unicode_palstring(const char16_t* str, pal::string_t* out)
 {
     out->clear();
 
-    std::mbstate_t mbstate;
-    memset(&mbstate, 0, sizeof(std::mbstate_t));
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conversion;
+    out->assign(conversion.to_bytes(str));
 
-    // Passing a nullptr destination computes the length of the destination string 
-    // without the null-termination character.
-    size_t mbsize= wcsrtombs(nullptr, &str, 0, &mbstate) + 1;
-
-    out->resize(mbsize, '\0');
-    size_t written_size = std::wcsrtombs(&(*out)[0], &str, mbsize, &mbstate);
-
-    return written_size != -1;
+    return true;
 }
 
 bool pal::is_path_rooted(const pal::string_t& path)
