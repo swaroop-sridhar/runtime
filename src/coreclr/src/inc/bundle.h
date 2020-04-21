@@ -35,7 +35,7 @@ struct BundleFileLocation
     bool IsValid() const { LIMITED_METHOD_CONTRACT; return Offset != 0; }
 };
 
-typedef bool(__stdcall BundleProbe)(LPCSTR, INT64*, INT64*);
+typedef bool(__stdcall BundleProbe)(LPCWSTR, INT64*, INT64*);
 
 class Bundle
 {

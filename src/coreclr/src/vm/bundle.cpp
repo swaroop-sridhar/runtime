@@ -101,7 +101,7 @@ BundleFileLocation Bundle::Probe(LPCWSTR path, bool pathIsBundleRelative) const
         }
     }
 
-    m_probe(UnicodeToUtf8(path), &loc.Size, &loc.Offset);
+    m_probe(path, &loc.Size, &loc.Offset);
 
     return loc;
 }
