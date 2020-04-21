@@ -52,6 +52,7 @@ const file_entry_t*  runner_t::probe(const pal::string_t &relative_path) const
 {
     for (const file_entry_t& entry : m_manifest.files)
     {
+        trace::info(_X("%s ==? %s"), entry.relative_path().c_str(), relative_path.c_str());
         if (pal::pathcmp(entry.relative_path(), relative_path) == 0)
         {
             return &entry;
@@ -90,11 +91,15 @@ bool runner_t::locate(const pal::string_t& relative_path, pal::string_t& full_pa
         return false;
     }
 
-    // Currently, all files except deps.json and runtimeconfig.json are extracted to disk.
-    // The json files are not queried by the host using this method.
-    assert(entry->needs_extraction());
+    if (entry->needs_extraction())
+    {
+        full_path.assign(extraction_path());
+    }
+    else
+    {
+        full_path.assign(base_path());
+    }
 
-    full_path.assign(extraction_path());
     append_path(&full_path, relative_path.c_str());
 
     return true;
