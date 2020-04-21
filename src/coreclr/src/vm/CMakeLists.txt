@@ -42,6 +42,7 @@ set(VM_SOURCES_DAC_AND_WKS_COMMON
     assemblyloadcontext.cpp
     baseassemblyspec.cpp
     binder.cpp
+    bundle.cpp
     castcache.cpp
     callcounting.cpp
     ceeload.cpp
@@ -140,6 +141,7 @@ set(VM_HEADERS_DAC_AND_WKS_COMMON
     ../inc/corjit.h
     ../inc/corjitflags.h
     ../inc/corjithost.h
+    ../inc/bundle.h
     appdomain.hpp
     appdomain.inl
     array.h
@@ -148,6 +150,7 @@ set(VM_HEADERS_DAC_AND_WKS_COMMON
     baseassemblyspec.h
     baseassemblyspec.inl
     binder.h
+    bundle.h
     castcache.h
     callcounting.h
     ceeload.h

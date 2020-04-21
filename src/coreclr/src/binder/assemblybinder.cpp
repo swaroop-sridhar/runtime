@@ -380,23 +380,28 @@ namespace BINDER_SPACE
 
         _ASSERTE(ppSystemAssembly != NULL);
 
-        StackSString sCoreLibDir(systemDirectory);
         ReleaseHolder<Assembly> pSystemAssembly;
 
+        // For normal runs, corelib is expected to be found in systemDirectory.
+        // For self-contained single-file bundles, corelib is expected within the bundle
+        // (systemDirectory is set accordingly)
+       
+        StackSString sCoreLibDir(systemDirectory);
         if (!sCoreLibDir.EndsWith(DIRECTORY_SEPARATOR_CHAR_W))
         {
             sCoreLibDir.Append(DIRECTORY_SEPARATOR_CHAR_W);
         }
 
-        StackSString sCoreLib;
+        StackSString sCoreLib(sCoreLibDir);
+        sCoreLib.Append(CoreLibName_IL_W);
 
         // At run-time, System.Private.CoreLib.dll is expected to be the NI image.
-        sCoreLib = sCoreLibDir;
-        sCoreLib.Append(CoreLibName_IL_W);
         IF_FAIL_GO(AssemblyBinder::GetAssembly(sCoreLib,
                                                TRUE /* fIsInGAC */,
                                                fBindToNativeImage,
-                                               &pSystemAssembly));
+                                               &pSystemAssembly,
+                                               NULL /* szMDAssemblyPath */,
+                                               Bundle::ProbeAppBundle(CoreLibName_IL_W, /* pathIsBundleRelative */ true)));
 
         *ppSystemAssembly = pSystemAssembly.Extract();
 
@@ -436,7 +441,9 @@ namespace BINDER_SPACE
         IF_FAIL_GO(AssemblyBinder::GetAssembly(sMscorlibSatellite,
                                                TRUE /* fIsInGAC */,
                                                FALSE /* fExplicitBindToNativeImage */,
-                                               &pSystemAssembly));
+                                               &pSystemAssembly,
+                                               NULL /* szMDAssemblyPath */,
+                                               Bundle::ProbeAppBundle(sMscorlibSatellite)));
 
         *ppSystemAssembly = pSystemAssembly.Extract();
 
@@ -553,7 +560,9 @@ namespace BINDER_SPACE
                                // specified.  Generally only NGEN PDB generation has
                                // this TRUE.
                                fExplicitBindToNativeImage,
-                               &pAssembly));
+                               &pAssembly,
+                               NULL /* szMDAssemblyPath */,
+                               Bundle::ProbeAppBundle(assemblyPath)));
 
         AssemblyName *pAssemblyName;
         pAssemblyName = pAssembly->GetAssemblyName();
@@ -850,6 +859,13 @@ namespace BINDER_SPACE
 
     /*
      * BindByTpaList is the entry-point for the custom binding algorithm in CoreCLR.
+     *
+     * The search for assemblies will proceed in the following order:
+     *
+     * If this application is a single-file bundle, the meta-data contained in the bundle
+     * will be probed to find the requested assembly. If the assembly is not found,
+     * The list of platform assemblies (TPAs) are considered next.
+     *
      * Platform assemblies are specified as a list of files.  This list is the only set of
      * assemblies that we will load as platform.  They can be specified as IL or NIs.
      *
