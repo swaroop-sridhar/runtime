@@ -14,7 +14,6 @@
 
 #include "assemblybinder.hpp"
 #include "assemblyname.hpp"
-
 #include "assembly.hpp"
 #include "applicationcontext.hpp"
 #include "bindertracing.h"
@@ -919,8 +918,51 @@ namespace BINDER_SPACE
         }
         else
         {
+            ReleaseHolder<Assembly> pTPAAssembly;
+            SString& simpleName = pRequestedAssemblyName->GetSimpleName();
+
+            // Is assembly in the bundle?
+            // Single-file bundle contents take precedence over TPA.
+            // The list of bundled assemblies is contained in the bundle manifest, and NOT in the TPA.
+            // Therefore the bundle is first probed using the assembly's simple name.
+            // If found, the assembly is loaded from the bundle.  
+            if (Bundle::AppIsBundle())
+            {
+                SString candidates[] = { W(".dll"), W(".ni.dll") };
+
+                // Loop through the binding paths looking for a matching assembly
+                for (int i = 0; i < 2; i++)
+                {
+                    SString assemblyFileName(simpleName);
+                    assemblyFileName.Append(candidates[i]);
+
+                    SString assemblyFilePath(Bundle::AppBundle->BasePath());
+                    assemblyFilePath.Append(assemblyFileName);
+
+                    hr = GetAssembly(assemblyFilePath,
+                        TRUE,  // fIsInGAC
+                        FALSE, // fExplicitBindToNativeImage
+                        &pTPAAssembly,
+                        NULL,  // szMDAssemblyPath
+                        Bundle::ProbeAppBundle(assemblyFileName, /* pathIsBundleRelative */ true));
+
+                    if (hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+                    {
+                        // Any other error is fatal
+                        IF_FAIL_GO(hr);
+
+                        if (TestCandidateRefMatchesDef(pRequestedAssemblyName, pTPAAssembly->GetAssemblyName(), true /*tpaListAssembly*/))
+                        {
+                            // We have found the requested assembly match in the bundle with validation of the full-qualified name. 
+                            // Bind to it.
+                            pBindResult->SetResult(pTPAAssembly);
+                            GO_WITH_HRESULT(S_OK);
+                        }
+                    }
+                }
+            }
+
             // Is assembly on TPA list?
-            SString &simpleName = pRequestedAssemblyName->GetSimpleName();
             SimpleNameToFileNameMap * tpaMap = pApplicationContext->GetTpaList();
             const SimpleNameToFileNameMapEntry *pTpaEntry = tpaMap->LookupPtr(simpleName.GetUnicode());
             ReleaseHolder<Assembly> pTPAAssembly;
@@ -1036,20 +1078,22 @@ namespace BINDER_SPACE
     }
 
     /* static */
-    HRESULT AssemblyBinder::GetAssembly(SString     &assemblyPath,
-                                        BOOL         fIsInGAC,
+    HRESULT AssemblyBinder::GetAssembly(SString            &assemblyPath,
+                                        BOOL               fIsInGAC,
 
                                         // When binding to the native image, should we
                                         // assume assemblyPath explicitly specifies that
                                         // NI?  (If not, infer the path to the NI
                                         // implicitly.)
-                                        BOOL         fExplicitBindToNativeImage,
+                                        BOOL               fExplicitBindToNativeImage,
 
-                                        Assembly   **ppAssembly,
+                                        Assembly           **ppAssembly,
 
                                         // If assemblyPath refers to a native image without metadata,
                                         // szMDAssemblyPath gives the alternative file to get metadata.
-                                        LPCTSTR      szMDAssemblyPath)
+                                        LPCTSTR            szMDAssemblyPath,
+                                        LPCTSTR            szMDAssemblyPath,
+                                        BundleFileLocation bundleFileLocation)
     {
         HRESULT hr = S_OK;
 
@@ -1069,7 +1113,7 @@ namespace BINDER_SPACE
         {
             LPCTSTR szAssemblyPath = const_cast<LPCTSTR>(assemblyPath.GetUnicode());
 
-            hr = BinderAcquirePEImage(szAssemblyPath, &pPEImage, &pNativePEImage, fExplicitBindToNativeImage);
+            hr = BinderAcquirePEImage(szAssemblyPath, &pPEImage, &pNativePEImage, fExplicitBindToNativeImage, bundleFileLocation);
             IF_FAIL_GO(hr);
 
             // If we found a native image, it might be an MSIL assembly masquerading as an native image
@@ -1084,7 +1128,7 @@ namespace BINDER_SPACE
                     BinderReleasePEImage(pPEImage);
                     BinderReleasePEImage(pNativePEImage);
 
-                    hr = BinderAcquirePEImage(szAssemblyPath, &pPEImage, &pNativePEImage, false);
+                    hr = BinderAcquirePEImage(szAssemblyPath, &pPEImage, &pNativePEImage, false, bundleFileLocation);
                     IF_FAIL_GO(hr);
                 }
             }
@@ -1110,7 +1154,7 @@ namespace BINDER_SPACE
                 }
                 else
                 {
-                    hr = BinderAcquirePEImage(szMDAssemblyPath, &pPEImage, NULL, FALSE);
+                    hr = BinderAcquirePEImage(szMDAssemblyPath, &pPEImage, NULL, FALSE, bundleFileLocation);
                     IF_FAIL_GO(hr);
 
                     hr = BinderAcquireImport(pPEImage, &pIMetaDataAssemblyImport, dwPAFlags, FALSE);

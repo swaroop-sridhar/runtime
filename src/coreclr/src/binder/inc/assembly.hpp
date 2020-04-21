@@ -37,6 +37,19 @@ STDAPI BinderAcquireImport(PEImage                  *pPEImage,
                            DWORD                    *pdwPAFlags,
                            BOOL                     bNativeImage);
 
+#include "bundle.h"
+
+STDAPI BinderAcquirePEImage(LPCTSTR            szAssemblyPath,
+    PEImage** ppPEImage,
+    PEImage** ppNativeImage,
+    BOOL               fExplicitBindToNativeImage,
+    BundleFileLocation bundleFileLocation);
+
+STDAPI BinderAcquireImport(PEImage* pPEImage,
+    IMDInternalImport** pIMetaDataAssemblyImport,
+    DWORD* pdwPAFlags,
+    BOOL                bNativeImage);
+
 STDAPI BinderHasNativeHeader(PEImage *pPEImage,
                              BOOL    *result);
 
