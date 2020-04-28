@@ -33,6 +33,30 @@ set(HEADERS
 
 if(CLR_CMAKE_TARGET_WIN32)
     list(APPEND SOURCES
+        static_apphost.def)
+else(CLR_CMAKE_TARGET_WIN32)
+    set(DEF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/static_apphost_unixexports.src)
+    set(EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/static_apphost.exports)
+    generate_exports_file(${DEF_SOURCES} ${EXPORTS_FILE})
+
+    if(CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD)
+        # Add linker exports file option
+        set(EXPORTS_LINKER_OPTION -Wl,--version-script=${EXPORTS_FILE})
+    endif(CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD)
+
+    if(CLR_CMAKE_HOST_OSX)
+        # Add linker exports file option
+        set(EXPORTS_LINKER_OPTION -Wl,-exported_symbols_list,${EXPORTS_FILE})
+    endif(CLR_CMAKE_HOST_OSX)
+
+    if(CLR_CMAKE_HOST_SUNOS)
+        # Add linker exports file option
+        set(EXPORTS_LINKER_OPTION -Wl,-M,${EXPORTS_FILE})
+    endif(CLR_CMAKE_HOST_SUNOS)
+endif(CLR_CMAKE_TARGET_WIN32)
+
+if(CLR_CMAKE_TARGET_WIN32)
+    list(APPEND SOURCES
         ../apphost.windows.cpp)
 
     list(APPEND HEADERS
@@ -50,6 +74,16 @@ if(CLR_CMAKE_TARGET_WIN32)
             LINK_FLAGS "/MANIFEST:NO"
         )
 endif()
+
+set_property(TARGET static_apphost PROPERTY ENABLE_EXPORTS 1)
+
+if(CLR_CMAKE_HOST_UNIX)
+    add_custom_target(static_apphost_exports DEPENDS ${EXPORTS_FILE})
+    add_dependencies(static_apphost static_apphost_exports)
+
+    set_property(TARGET static_apphost APPEND_STRING PROPERTY LINK_FLAGS ${EXPORTS_LINKER_OPTION})
+    set_property(TARGET static_apphost APPEND_STRING PROPERTY LINK_DEPENDS ${EXPORTS_FILE})
+endif(CLR_CMAKE_HOST_UNIX)
 
 # Specify non-default Windows libs to be used for Arm/Arm64 builds
 if (CLR_CMAKE_TARGET_WIN32 AND (CLR_CMAKE_TARGET_ARCH_ARM OR CLR_CMAKE_TARGET_ARCH_ARM64))
