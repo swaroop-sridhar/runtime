@@ -395,12 +395,23 @@ namespace BINDER_SPACE
         sCoreLib.Append(CoreLibName_IL_W);
 
         // At run-time, System.Private.CoreLib.dll is expected to be the NI image.
-        IF_FAIL_GO(AssemblyBinder::GetAssembly(sCoreLib,
-                                               TRUE /* fIsInGAC */,
-                                               fBindToNativeImage,
-                                               &pSystemAssembly,
-                                               NULL /* szMDAssemblyPath */,
-                                               Bundle::ProbeAppBundle(sCoreLib)));
+        if (Bundle::AppIsBundle())
+        {
+            SString coreLibName(CoreLibName_IL_W);
+            IF_FAIL_GO(AssemblyBinder::GetAssembly(sCoreLib,
+                TRUE /* fIsInGAC */,
+                fBindToNativeImage,
+                &pSystemAssembly,
+                NULL /* szMDAssemblyPath */,
+                Bundle::ProbeAppBundle(coreLibName, true)));
+        }
+        else
+        {
+            IF_FAIL_GO(AssemblyBinder::GetAssembly(sCoreLib,
+                TRUE /* fIsInGAC */,
+                fBindToNativeImage,
+                &pSystemAssembly));
+        }
 
         *ppSystemAssembly = pSystemAssembly.Extract();
 
