@@ -142,15 +142,15 @@
       <Uri>https://github.com/dotnet/llvm-project</Uri>
       <Sha>0f783cfd29f6b25f6105536b7b2283d6eaaa2a7f</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.App" Version="5.0.0-preview.4.20202.18">
+    <Dependency Name="Microsoft.NETCore.App" Version="5.0.100-preview.4.20229.10">
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>0375524a91a47ca4db3ee1be548f74bab7e26e76</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.DotNetHost" Version="5.0.0-preview.4.20202.18">
+    <Dependency Name="Microsoft.NETCore.DotNetHost" Version="5.0.100-preview.4.20229.10">
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>0375524a91a47ca4db3ee1be548f74bab7e26e76</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.DotNetHostPolicy" Version="5.0.0-preview.4.20202.18">
+    <Dependency Name="Microsoft.NETCore.DotNetHostPolicy" Version="5.0.100-preview.4.20229.10">
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>0375524a91a47ca4db3ee1be548f74bab7e26e76</Sha>
     </Dependency>
@@ -158,15 +158,15 @@
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>cf64918877d98577363bb40d5eafac52beb80a79</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.ILAsm" Version="5.0.0-preview.4.20202.18">
+    <Dependency Name="Microsoft.NETCore.ILAsm" Version="5.0.100-preview.4.20229.10">
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>0375524a91a47ca4db3ee1be548f74bab7e26e76</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NET.Sdk.IL" Version="5.0.0-preview.4.20202.18">
+    <Dependency Name="Microsoft.NET.Sdk.IL" Version="5.0.100-preview.4.20229.10">
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>0375524a91a47ca4db3ee1be548f74bab7e26e76</Sha>
     </Dependency>
-    <Dependency Name="System.Text.Json" Version="5.0.0-preview.4.20202.18">
+    <Dependency Name="System.Text.Json" Version="5.0.100-preview.4.20229.10">
       <Uri>https://github.com/dotnet/runtime</Uri>
       <Sha>0375524a91a47ca4db3ee1be548f74bab7e26e76</Sha>
     </Dependency>
