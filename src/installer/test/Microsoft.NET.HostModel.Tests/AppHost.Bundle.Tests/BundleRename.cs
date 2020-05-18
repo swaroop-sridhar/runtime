@@ -51,9 +51,12 @@ namespace AppHost.Bundle.Tests
                 .CaptureStdOut()
                 .Start();
 
-            while (!File.Exists(waitFile) && !singleExe.Process.HasExited)
+            const int twoMitutes = 120000 /*milliseconds*/;
+            int waitTime = 0;
+            while (!File.Exists(waitFile) && !singleExe.Process.HasExited && waitTime < twoMitutes)
             {
                 Thread.Sleep(100);
+                waitTime += 100;
             }
 
             Assert.True(File.Exists(waitFile));
@@ -61,7 +64,7 @@ namespace AppHost.Bundle.Tests
             File.Move(singleFile, renameFile);
             File.Create(resumeFile).Close();
 
-            var result = singleExe.WaitForExit(fExpectedToFail: false);
+            var result = singleExe.WaitForExit(fExpectedToFail: false, twoMitutes);
 
             result
                 .Should()
