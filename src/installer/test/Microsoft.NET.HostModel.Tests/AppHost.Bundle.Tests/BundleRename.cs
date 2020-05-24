@@ -27,7 +27,7 @@ namespace AppHost.Bundle.Tests
         private void Bundle_can_be_renamed_while_running(bool renameFirstRun)
         {
             var fixture = sharedTestState.TestFixture.Copy();
-            string singleFile = BundleHelper.BundleApp(fixture);
+            string singleFile = BundleHelper.BundleApp(fixture, targetFrameworkVersion: new Version(3, 1));
             string outputDir = Path.GetDirectoryName(singleFile);
             string renameFile = Path.Combine(outputDir, Path.GetRandomFileName());
             string waitFile = Path.Combine(outputDir, "wait");
@@ -80,17 +80,17 @@ namespace AppHost.Bundle.Tests
 
             public SharedTestState()
             {
-                RepoDirectories = new RepoDirectoriesProvider();
-                TestFixture = new TestProjectFixture("AppWithWait", RepoDirectories);
+                RepoDirectories = new RepoDirectoriesProvider(microsoftNETCoreAppVersion: "3.1.4");
+                TestFixture = new TestProjectFixture("AppWithWait", RepoDirectories, framework: "netcoreapp3.1");
                 TestFixture
-                    .EnsureRestoredForRid(TestFixture.CurrentRid, RepoDirectories.CorehostPackages)
                     .PublishProject(runtime: TestFixture.CurrentRid,
-                                    outputDirectory: BundleHelper.GetPublishPath(TestFixture));
+                                    outputDirectory: BundleHelper.GetPublishPath(TestFixture),
+                                    restore:true);
             }
 
             public void Dispose()
             {
-                TestFixture.Dispose();
+                // TestFixture.Dispose();
             }
         }
     }
