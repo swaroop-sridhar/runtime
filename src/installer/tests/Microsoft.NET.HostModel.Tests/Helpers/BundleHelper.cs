@@ -35,6 +35,16 @@ namespace BundleTests.Helpers
             return Path.GetFileName(fixture.TestProject.AppExe);
         }
 
+        public static string GetSingleFileName(TestProjectFixture fixture)
+        {
+            return GetHostName(fixture);
+        }
+
+        public static string GetPdbName(TestProjectFixture fixture)
+        {
+            return Path.GetFileNameWithoutExtension(fixture.TestProject.AppDll) + ".pdb";
+        }
+
         public static string GetAppName(TestProjectFixture fixture)
         {
             return Path.GetFileName(fixture.TestProject.AppDll);
@@ -70,10 +80,19 @@ namespace BundleTests.Helpers
         {
             return Path.Combine(fixture.TestProject.ProjectDirectory, "publish");
         }
+        public static DirectoryInfo GetPublishDir(TestProjectFixture fixture)
+        {
+            return Directory.CreateDirectory(GetPublishPath(fixture));
+        }
+
+        public static string GetBundlePath(TestProjectFixture fixture)
+        {
+            return Path.Combine(fixture.TestProject.ProjectDirectory, "bundle");
+        }
 
         public static DirectoryInfo GetBundleDir(TestProjectFixture fixture)
         {
-            return Directory.CreateDirectory(Path.Combine(fixture.TestProject.ProjectDirectory, "bundle"));
+            return Directory.CreateDirectory(GetBundlePath(fixture));
         }
 
         public static string  GetExtractionRootPath(TestProjectFixture fixture)
