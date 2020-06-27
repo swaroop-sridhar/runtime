@@ -99,7 +99,8 @@ MAPmmapAndRecord(
     int prot,
     int flags,
     int fd,
-    off_t offset,
+    off_t mapOffset,
+    off_t baseOffset,
     LPVOID *ppvBaseAddress
     );
 
@@ -2138,6 +2139,23 @@ MAPRecordMapping(
     return palError;
 }
 
+static size_t OffsetWithinPage(off_t offset)
+{
+    return offset & (GetVirtualPageSize() - 1);
+}
+
+static bool IsPageAligned(off_t offset)
+{
+    return OffsetWithinPage(offset) == 0;
+}
+
+inline size_t RoundToPage(size_t size, off_t offset, size_t alignment)
+{
+    size_t result = size + OffsetWithinPage(offset);
+    assert(result >= size);
+    return size;
+}
+
 // Do the actual mmap() call, and record the mapping in the MappedViewList list.
 // This call assumes the mapping_critsec has already been taken.
 static PAL_ERROR
@@ -2149,15 +2167,18 @@ MAPmmapAndRecord(
     int prot,
     int flags,
     int fd,
-    off_t offset,
+    off_t mapOffset,
+    off_t baseOffset,
     LPVOID *ppvBaseAddress
     )
 {
     _ASSERTE(pPEBaseAddress != NULL);
+    _ASSERTE(IsPageAligned(addr));
+    _ASSERTE(IsPageAligned(mapOffset));
 
     PAL_ERROR palError = NO_ERROR;
-    off_t adjust = offset & (GetVirtualPageSize() - 1);
-    LPVOID pvBaseAddress = static_cast<char *>(addr) - adjust;
+    off_t adjust = OffsetWithinPage(offset);
+    LPVOID pvBaseAddress = addr;
 
 #ifdef __APPLE__
     if ((prot & PROT_EXEC) != 0 && IsRunningOnMojaveHardenedRuntime())
@@ -2177,7 +2198,7 @@ MAPmmapAndRecord(
     else
 #endif
     {
-        pvBaseAddress = mmap(static_cast<char *>(addr) - adjust, len + adjust, prot, flags, fd, offset - adjust);
+        pvBaseAddress = mmap(addr, len + adjust, prot, flags, fd, offset - adjust);
         if (MAP_FAILED == pvBaseAddress)
         {
             ERROR_(LOADER)( "mmap failed with code %d: %s.\n", errno, strerror( errno ) );
@@ -2197,7 +2218,7 @@ MAPmmapAndRecord(
         }
         else
         {
-            *ppvBaseAddress = pvBaseAddress;
+            *ppvBaseAddress = pvBaseAddress + adjust;
         }
     }
 
@@ -2325,8 +2346,15 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     {
         if (strlen(envVar) > 0)
         {
-            forceRelocs = true;
-            TRACE_(LOADER)("Forcing rebase of image\n");
+            if (offset != 0)
+            {
+                TRACE_(LOADER)("ForceReloc at offset %d is not supported\n", offset);
+            }
+            else
+            {
+                forceRelocs = true;
+                TRACE_(LOADER)("Forcing rebase of image\n");
+            }
         }
 
         free(envVar);
@@ -2361,7 +2389,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     // We're going to start adding mappings to the mapping list, so take the critical section
     InternalEnterCriticalSection(pThread, &mapping_critsec);
 
-    reserveSize = virtualSize;
+    reserveSize = RoundToPage(virtualSize, offset);
     if ((ntHeader.OptionalHeader.SectionAlignment) > GetVirtualPageSize())
     {
         reserveSize += ntHeader.OptionalHeader.SectionAlignment;
@@ -2381,7 +2409,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     {
         void *usedBaseAddr = NULL;
 #ifdef FEATURE_ENABLE_NO_ADDRESS_SPACE_RANDOMIZATION
-        if (g_useDefaultBaseAddr)
+        if (g_useDefaultBaseAddr && IsPageAligned(offset))
         {
             usedBaseAddr = (void*) preferredBase;
         }
@@ -2424,8 +2452,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     }
 #endif // _DEBUG
 
-    size_t headerSize;
-    headerSize = GetVirtualPageSize(); // if there are lots of sections, this could be wrong
+    size_t headerSize = GetVirtualPageSize(); // if there are lots of sections, this could be wrong
 
     if (forceOveralign)
     {
@@ -2445,7 +2472,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
 
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                    loadedBase, headerSize, PROT_READ, readOnlyFlags, fd, offset,
+                    loadedBase, headerSize, PROT_READ, readOnlyFlags, fd, 0, offset,
                     (void**)&loadedHeader);
     if (NO_ERROR != palError)
     {
@@ -2542,7 +2569,8 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
                         prot,
                         flags,
                         fd,
-                        offset + currentHeader.PointerToRawData,
+                        currentHeader.PointerToRawData,
+                        offset,
                         &sectionData);
         if (NO_ERROR != palError)
         {
