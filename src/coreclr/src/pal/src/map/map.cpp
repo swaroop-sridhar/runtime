@@ -2149,10 +2149,21 @@ static bool IsPageAligned(off_t offset)
     return OffsetWithinPage(offset) == 0;
 }
 
-inline size_t RoundToPage(size_t size, off_t offset, size_t alignment)
+static size_t OffsetWithinPage(void *addr)
+{
+  return ((size_t)addr) & (GetVirtualPageSize() - 1);
+}
+
+static bool IsPageAligned(void *addr)
+{
+    return OffsetWithinPage(addr) == 0;
+}
+
+
+inline size_t RoundToPage(size_t size, off_t offset)
 {
     size_t result = size + OffsetWithinPage(offset);
-    assert(result >= size);
+    _ASSERTE(result >= size);
     return size;
 }
 
@@ -2177,9 +2188,13 @@ MAPmmapAndRecord(
     _ASSERTE(IsPageAligned(mapOffset));
 
     PAL_ERROR palError = NO_ERROR;
-    off_t adjust = OffsetWithinPage(offset);
     LPVOID pvBaseAddress = addr;
+    off_t adjust = OffsetWithinPage(baseOffset);
+    off_t fileOffset = mapOffset + baseOffset - adjust;
+    size_t fileMapLen = len + adjust;
 
+    _ASSERTE(IsPageAligned(fileOffset));
+    
 #ifdef __APPLE__
     if ((prot & PROT_EXEC) != 0 && IsRunningOnMojaveHardenedRuntime())
     {
@@ -2188,9 +2203,9 @@ MAPmmapAndRecord(
 
         // Set the requested mapping with forced PROT_WRITE to ensure data from the file can be read there,
         // read the data in and finally remove the forced PROT_WRITE
-        if ((mprotect(pvBaseAddress, len + adjust, prot | PROT_WRITE) == -1) ||
-            (pread(fd, pvBaseAddress, len + adjust, offset - adjust) == -1) ||
-            (((prot & PROT_WRITE) == 0) && mprotect(pvBaseAddress, len + adjust, prot) == -1))
+        if ((mprotect(pvBaseAddress, fileMapLen, prot | PROT_WRITE) == -1) ||
+            (pread(fd, pvBaseAddress, fileMapLen, fileOffset) == -1) ||
+            (((prot & PROT_WRITE) == 0) && mprotect(pvBaseAddress, fileMapLen, prot) == -1))
         {
             palError = FILEGetLastErrorFromErrno();
         }
@@ -2198,7 +2213,7 @@ MAPmmapAndRecord(
     else
 #endif
     {
-        pvBaseAddress = mmap(addr, len + adjust, prot, flags, fd, offset - adjust);
+        pvBaseAddress = mmap(addr, fileMapLen, prot, flags, fd, fileOffset);
         if (MAP_FAILED == pvBaseAddress)
         {
             ERROR_(LOADER)( "mmap failed with code %d: %s.\n", errno, strerror( errno ) );
@@ -2208,17 +2223,17 @@ MAPmmapAndRecord(
 
     if (NO_ERROR == palError)
     {
-        palError = MAPRecordMapping(pMappingObject, pPEBaseAddress, pvBaseAddress, len, prot);
+        palError = MAPRecordMapping(pMappingObject, pPEBaseAddress, pvBaseAddress, fileMapLen, prot);
         if (NO_ERROR != palError)
         {
-            if (-1 == munmap(pvBaseAddress, len))
+            if (-1 == munmap(pvBaseAddress, fileMapLen))
             {
                 ERROR_(LOADER)("Unable to unmap the file. Expect trouble.\n");
             }
         }
         else
         {
-            *ppvBaseAddress = pvBaseAddress + adjust;
+	    *ppvBaseAddress = static_cast<char *>(pvBaseAddress) + adjust;
         }
     }
 
@@ -2452,7 +2467,8 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     }
 #endif // _DEBUG
 
-    size_t headerSize = GetVirtualPageSize(); // if there are lots of sections, this could be wrong
+    size_t headerSize;
+    headerSize = GetVirtualPageSize(); // if there are lots of sections, this could be wrong
 
     if (forceOveralign)
     {
