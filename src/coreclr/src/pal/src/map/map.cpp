@@ -2442,10 +2442,10 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     //we have now reserved memory (potentially we got rebased).  Walk the PE sections and map each part
     //separately.
 
-
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
+    LPVOID baseAddress = static_cast<char*>(loadedBase) + offset;
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                    loadedBase + offset, headerSize, PROT_READ, readOnlyFlags, fd, offset,
+                    baseAddress, headerSize, PROT_READ, readOnlyFlags, fd, offset,
                     (void**)&loadedHeader);
     if (NO_ERROR != palError)
     {
@@ -2536,8 +2536,9 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
             flags = readWriteFlags;
         }
 
+        LPVOID sectionAddr = static_cast<char*>(sectionBase) + offset;
         palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                        sectionBase + offset,
+                        sectionAddr,
                         currentHeader.SizeOfRawData,
                         prot,
                         flags,
