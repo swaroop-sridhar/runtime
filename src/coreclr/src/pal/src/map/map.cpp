@@ -2443,7 +2443,8 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     //separately.
 
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
-    LPVOID baseAddress = static_cast<char*>(loadedBase) + offset;
+    LPVOID baseAddress;
+    baseAddress = static_cast<char*>(loadedBase) + offset;
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
                     baseAddress, headerSize, PROT_READ, readOnlyFlags, fd, offset,
                     (void**)&loadedHeader);
@@ -2536,7 +2537,8 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
             flags = readWriteFlags;
         }
 
-        LPVOID sectionAddr = static_cast<char*>(sectionBase) + offset;
+        LPVOID sectionAddr;
+        sectionAddr = static_cast<char*>(sectionBase) + offset;
         palError = MAPmmapAndRecord(pFileObject, loadedBase,
                         sectionAddr,
                         currentHeader.SizeOfRawData,
