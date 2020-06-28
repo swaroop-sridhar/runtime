@@ -2445,7 +2445,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
 
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                    loadedBase, headerSize, PROT_READ, readOnlyFlags, fd, offset,
+                    loadedBase + offset, headerSize, PROT_READ, readOnlyFlags, fd, offset,
                     (void**)&loadedHeader);
     if (NO_ERROR != palError)
     {
@@ -2537,7 +2537,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
         }
 
         palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                        sectionBase,
+                        sectionBase + offset,
                         currentHeader.SizeOfRawData,
                         prot,
                         flags,
