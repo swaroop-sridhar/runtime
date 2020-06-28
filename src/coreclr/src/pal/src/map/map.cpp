@@ -99,7 +99,8 @@ MAPmmapAndRecord(
     int prot,
     int flags,
     int fd,
-    off_t offset,
+    off_t peOffset,
+    off_t bundleOffset,
     LPVOID *ppvBaseAddress
     );
 
@@ -2149,7 +2150,8 @@ MAPmmapAndRecord(
     int prot,
     int flags,
     int fd,
-    off_t offset,
+    off_t peOffset,
+    off_t bundleOffset,
     LPVOID *ppvBaseAddress
     )
 {
@@ -2443,10 +2445,8 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     //separately.
 
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
-    LPVOID baseAddress;
-    baseAddress = static_cast<char*>(loadedBase) + offset;
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                    baseAddress, headerSize, PROT_READ, readOnlyFlags, fd, offset,
+                    loadedBase, headerSize, PROT_READ, readOnlyFlags, fd, 0, offset,
                     (void**)&loadedHeader);
     if (NO_ERROR != palError)
     {
@@ -2537,15 +2537,14 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
             flags = readWriteFlags;
         }
 
-        LPVOID sectionAddr;
-        sectionAddr = static_cast<char*>(sectionBase) + offset;
         palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                        sectionAddr,
+                        sectionBase,
                         currentHeader.SizeOfRawData,
                         prot,
                         flags,
                         fd,
-                        offset + currentHeader.PointerToRawData,
+                        currentHeader.PointerToRawData,
+                        offset,
                         &sectionData);
         if (NO_ERROR != palError)
         {
