@@ -2645,7 +2645,7 @@ done:
 
     if (palError == ERROR_SUCCESS)
     {
-        retval = loadedBase;
+        retval = loadedHeader;
         LOGEXIT("MAPMapPEFile returns %p\n", retval);
     }
     else
