@@ -2159,12 +2159,16 @@ static bool IsPageAligned(void *addr)
     return OffsetWithinPage(addr) == 0;
 }
 
-
 inline size_t RoundToPage(size_t size, off_t offset)
 {
     size_t result = size + OffsetWithinPage(offset);
     _ASSERTE(result >= size);
     return size;
+}
+
+static void* AddOffset(void* addr, off_t offset)
+{
+    return static_cast<char*>(pvBaseAddress) + offset;
 }
 
 // Do the actual mmap() call, and record the mapping in the MappedViewList list.
@@ -2178,22 +2182,19 @@ MAPmmapAndRecord(
     int prot,
     int flags,
     int fd,
-    off_t mapOffset,
-    off_t baseOffset,
+    off_t peOffset,
+    off_t bundleOffset,
     LPVOID *ppvBaseAddress
     )
 {
     _ASSERTE(pPEBaseAddress != NULL);
-    _ASSERTE(IsPageAligned(addr));
-    _ASSERTE(IsPageAligned(mapOffset));
 
     PAL_ERROR palError = NO_ERROR;
-    LPVOID pvBaseAddress = addr;
-    off_t adjust = OffsetWithinPage(baseOffset);
-    off_t fileOffset = mapOffset + baseOffset - adjust;
-    size_t fileMapLen = len + adjust;
-
+	off_t offset - peOffset + bundleOffset;
+    off_t adjust = OffsetWithinPage(offset);
+    LPVOID pvBaseAddress = static_cast<char *>(addr) - adjust;
     _ASSERTE(IsPageAligned(fileOffset));
+    _ASSERTE(IsPageAligned(pvBaseAddress));
     
 #ifdef __APPLE__
     if ((prot & PROT_EXEC) != 0 && IsRunningOnMojaveHardenedRuntime())
@@ -2203,9 +2204,9 @@ MAPmmapAndRecord(
 
         // Set the requested mapping with forced PROT_WRITE to ensure data from the file can be read there,
         // read the data in and finally remove the forced PROT_WRITE
-        if ((mprotect(pvBaseAddress, fileMapLen, prot | PROT_WRITE) == -1) ||
-            (pread(fd, pvBaseAddress, fileMapLen, fileOffset) == -1) ||
-            (((prot & PROT_WRITE) == 0) && mprotect(pvBaseAddress, fileMapLen, prot) == -1))
+        if ((mprotect(pvBaseAddress, len + adjust, prot | PROT_WRITE) == -1) ||
+            (pread(fd, pvBaseAddress, len + adjust, offset - adjust) == -1) ||
+            (((prot & PROT_WRITE) == 0) && mprotect(pvBaseAddress, len + adjust, prot) == -1))
         {
             palError = FILEGetLastErrorFromErrno();
         }
@@ -2213,7 +2214,7 @@ MAPmmapAndRecord(
     else
 #endif
     {
-        pvBaseAddress = mmap(addr, fileMapLen, prot, flags, fd, fileOffset);
+        pvBaseAddress = mmap(pvBaseAddress, len + adjust, prot, flags, fd, offset - adjust);
         if (MAP_FAILED == pvBaseAddress)
         {
             ERROR_(LOADER)( "mmap failed with code %d: %s.\n", errno, strerror( errno ) );
@@ -2223,17 +2224,17 @@ MAPmmapAndRecord(
 
     if (NO_ERROR == palError)
     {
-        palError = MAPRecordMapping(pMappingObject, pPEBaseAddress, pvBaseAddress, fileMapLen, prot);
+        palError = MAPRecordMapping(pMappingObject, pPEBaseAddress, pvBaseAddress, len, prot);
         if (NO_ERROR != palError)
         {
-            if (-1 == munmap(pvBaseAddress, fileMapLen))
+            if (-1 == munmap(pvBaseAddress, len))
             {
                 ERROR_(LOADER)("Unable to unmap the file. Expect trouble.\n");
             }
         }
         else
         {
-	    *ppvBaseAddress = static_cast<char *>(pvBaseAddress) + adjust;
+            *ppvBaseAddress = pvBaseAddress;
         }
     }
 
@@ -2469,6 +2470,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
 
     size_t headerSize;
     headerSize = GetVirtualPageSize(); // if there are lots of sections, this could be wrong
+    headerSize = RoundToPage(headerSize, offset);
 
     if (forceOveralign)
     {
@@ -2485,10 +2487,10 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     //we have now reserved memory (potentially we got rebased).  Walk the PE sections and map each part
     //separately.
 
-
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
+    LPVOID baseAddr = AddOffset(loadedBase, offset);
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
-                    loadedBase, headerSize, PROT_READ, readOnlyFlags, fd, 0, offset,
+                    baseAddr, headerSize, PROT_READ, readOnlyFlags, fd, 0, offset,
                     (void**)&loadedHeader);
     if (NO_ERROR != palError)
     {
@@ -2509,9 +2511,9 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     // Validation
     char* sectionHeaderEnd;
     sectionHeaderEnd = (char*)firstSection + numSections * sizeof(IMAGE_SECTION_HEADER);
-    if (   ((void*)firstSection < loadedBase)
+    if (   ((void*)firstSection < baseaddr)
         || ((char*)firstSection > sectionHeaderEnd)
-        || (sectionHeaderEnd > (char*)loadedBase + virtualSize)
+        || (sectionHeaderEnd > (char*)baseAddr + virtualSize)
         )
     {
         ERROR_(LOADER)( "image is corrupt\n" );
@@ -2520,7 +2522,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     }
 
     void* prevSectionEnd;
-    prevSectionEnd = (char*)loadedBase + headerSize; // the first "section" for our purposes is the header
+    prevSectionEnd = (char*)baseAddr + headerSize; // the first "section" for our purposes is the header
     for (unsigned i = 0; i < numSections; ++i)
     {
         //for each section, map the section of the file to the correct virtual offset.  Gather the
@@ -2529,13 +2531,13 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
         int prot = 0;
         IMAGE_SECTION_HEADER &currentHeader = firstSection[i];
 
-        void* sectionBase = (char*)loadedBase + currentHeader.VirtualAddress;
+        void* sectionBase = (char*)baseAddr + currentHeader.VirtualAddress;
         void* sectionBaseAligned = ALIGN_DOWN(sectionBase, GetVirtualPageSize());
 
         // Validate the section header
-        if (   (sectionBase < loadedBase)                                                           // Did computing the section base overflow?
+        if (   (sectionBase < baseAddr)                                                           // Did computing the section base overflow?
             || ((char*)sectionBase + currentHeader.SizeOfRawData < (char*)sectionBase)              // Does the section overflow?
-            || ((char*)sectionBase + currentHeader.SizeOfRawData > (char*)loadedBase + virtualSize) // Does the section extend past the end of the image as the header stated?
+            || ((char*)sectionBase + currentHeader.SizeOfRawData > (char*)baseAddr + virtualSize) // Does the section extend past the end of the image as the header stated?
             || (prevSectionEnd > sectionBase)                                                       // Does this section overlap the previous one?
             )
         {
