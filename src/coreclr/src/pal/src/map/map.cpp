@@ -2166,9 +2166,9 @@ inline size_t RoundToPage(size_t size, off_t offset)
     return size;
 }
 
-static void* AddOffset(void* addr, off_t offset)
+static void* AddOffsetWithinPage(void* addr, off_t offset)
 {
-    return static_cast<char*>(addr) + offset;
+    return static_cast<char*>(addr) + OffsetWithinPage(offset);
 }
 
 // Do the actual mmap() call, and record the mapping in the MappedViewList list.
@@ -2489,7 +2489,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
 
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
     LPVOID baseAddr;
-    baseAddr = AddOffset(loadedBase, offset);
+    baseAddr = AddOffsetWithinPage(loadedBase, offset);
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
                     baseAddr, headerSize, PROT_READ, readOnlyFlags, fd, 0, offset,
                     (void**)&loadedHeader);
