@@ -2168,7 +2168,7 @@ inline size_t RoundToPage(size_t size, off_t offset)
 
 static void* AddOffset(void* addr, off_t offset)
 {
-    return static_cast<char*>(pvBaseAddress) + offset;
+    return static_cast<char*>(addr) + offset;
 }
 
 // Do the actual mmap() call, and record the mapping in the MappedViewList list.
@@ -2190,10 +2190,10 @@ MAPmmapAndRecord(
     _ASSERTE(pPEBaseAddress != NULL);
 
     PAL_ERROR palError = NO_ERROR;
-	off_t offset - peOffset + bundleOffset;
+	off_t offset = peOffset + bundleOffset;
     off_t adjust = OffsetWithinPage(offset);
     LPVOID pvBaseAddress = static_cast<char *>(addr) - adjust;
-    _ASSERTE(IsPageAligned(fileOffset));
+    _ASSERTE(IsPageAligned(offset - adjust));
     _ASSERTE(IsPageAligned(pvBaseAddress));
     
 #ifdef __APPLE__
@@ -2488,7 +2488,8 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     //separately.
 
     //first, map the PE header to the first page in the image.  Get pointers to the section headers
-    LPVOID baseAddr = AddOffset(loadedBase, offset);
+    LPVOID baseAddr;
+    baseAddr = AddOffset(loadedBase, offset);
     palError = MAPmmapAndRecord(pFileObject, loadedBase,
                     baseAddr, headerSize, PROT_READ, readOnlyFlags, fd, 0, offset,
                     (void**)&loadedHeader);
@@ -2511,7 +2512,7 @@ void * MAPMapPEFile(HANDLE hFile, off_t offset)
     // Validation
     char* sectionHeaderEnd;
     sectionHeaderEnd = (char*)firstSection + numSections * sizeof(IMAGE_SECTION_HEADER);
-    if (   ((void*)firstSection < baseaddr)
+    if (   ((void*)firstSection < baseAddr)
         || ((char*)firstSection > sectionHeaderEnd)
         || (sectionHeaderEnd > (char*)baseAddr + virtualSize)
         )
